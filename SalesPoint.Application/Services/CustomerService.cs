@@ -22,23 +22,21 @@ public sealed class CustomerService : ICustomerService
         int pageNumber,
         int pageSize)
     {
-        var data = await _repository.SearchAsync(field, value);
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 8 : pageSize;
 
-        var totalItems = data.Count;
+        var data = await _repository.SearchAsync(field, value, pageNumber, pageSize);
+        var totalItems = await _repository.CountAsync(field, value);
 
-        var items = data
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(customer => new CustomerDto
-            {
-                Id = customer.Id,
-                FirstName = customer.FirstName,
-                LastName = customer.LastName,
-                Phone = customer.Phone,
-                Address = customer.Address,
-                Email = customer.Email
-            })
-            .ToList();
+        var items = data.Select(customer => new CustomerDto
+        {
+            Id = customer.Id,
+            FirstName = customer.FirstName,
+            LastName = customer.LastName,
+            Phone = customer.Phone,
+            Address = customer.Address,
+            Email = customer.Email
+        }).ToList();
 
         return new PagedResponse<CustomerDto>
         {

@@ -15,47 +15,70 @@ public sealed class CustomerRepository : ICustomerRepository
 
     public async Task<List<Customer>> SearchAsync(string field, string value)
     {
+        return await SearchAsync(field, value, 1, 8);
+    }
+
+    public async Task<List<Customer>> SearchAsync(
+        string field,
+        string value,
+        int pageNumber,
+        int pageSize)
+    {
+        var query = BuildSearchQuery(field, value);
+
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 8 : pageSize;
+
+        return await query
+            .OrderBy(customer => customer.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountAsync(string field, string value)
+    {
+        var query = BuildSearchQuery(field, value);
+        return await query.CountAsync();
+    }
+
+    private IQueryable<Customer> BuildSearchQuery(string field, string value)
+    {
         var query = _context.Customers
             .AsNoTracking()
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(field) && !string.IsNullOrWhiteSpace(value))
-        {
-            var cleanField = field.Trim().ToLowerInvariant();
-            var cleanValue = value.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(field) || string.IsNullOrWhiteSpace(value))
+            return query;
 
-            query = cleanField switch
-            {
-                "id" when int.TryParse(value, out var id) =>
-                    query.Where(customer => customer.Id == id),
+        var cleanField = field.Trim().ToLowerInvariant();
+        var cleanValue = value.Trim();
 
-                "firstname" =>
-                    query.Where(customer => customer.FirstName.Contains(cleanValue)),
+        if (cleanField == "id" && int.TryParse(cleanValue, out var id))
+            return query.Where(customer => customer.Id == id);
 
-                "lastname" =>
-                    query.Where(customer => customer.LastName.Contains(cleanValue)),
+        if (cleanField == "firstname")
+            return query.Where(customer => customer.FirstName.Contains(cleanValue.ToUpper()));
 
-                "phone" =>
-                    query.Where(customer => customer.Phone.Contains(value.Trim())),
+        if (cleanField == "lastname")
+            return query.Where(customer => customer.LastName.Contains(cleanValue.ToUpper()));
 
-                "address" =>
-                    query.Where(customer => customer.Address.Contains(cleanValue)),
+        if (cleanField == "phone")
+            return query.Where(customer => customer.Phone.Contains(cleanValue));
 
-                "email" =>
-                    query.Where(customer => customer.Email.Contains(value.Trim().ToLowerInvariant())),
+        if (cleanField == "address")
+            return query.Where(customer => customer.Address.Contains(cleanValue.ToUpper()));
 
-                _ => query
-            };
-        }
+        if (cleanField == "email")
+            return query.Where(customer => customer.Email.Contains(cleanValue.ToLower()));
 
-        return await query
-            .OrderBy(customer => customer.Id)
-            .ToListAsync();
+        return query;
     }
 
     public async Task<Customer?> GetByIdAsync(int id)
     {
         return await _context.Customers
+            .AsNoTracking()
             .FirstOrDefaultAsync(customer => customer.Id == id);
     }
 

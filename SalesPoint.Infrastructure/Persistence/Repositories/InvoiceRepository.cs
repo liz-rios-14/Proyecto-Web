@@ -21,20 +21,16 @@ public sealed class InvoiceRepository : IInvoiceRepository
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await _context.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable);
+                .BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
             var lastInvoiceId = await _context.Invoices
                 .OrderByDescending(item => item.Id)
                 .Select(item => item.Id)
                 .FirstOrDefaultAsync();
 
-            var nextSequence = lastInvoiceId + 1;
-
-            invoice.AssignInvoiceNumber(nextSequence);
+            invoice.AssignInvoiceNumber(lastInvoiceId + 1);
 
             await _context.Invoices.AddAsync(invoice);
-
-            //bloquea internamente, genera un nuevo número de factura, y luego guarda los cambios
             await _context.SaveChangesAsync();
 
             await transaction.CommitAsync();
@@ -43,17 +39,28 @@ public sealed class InvoiceRepository : IInvoiceRepository
         });
     }
 
-    public async Task<List<Invoice>> GetAllAsync()
+    public async Task<List<Invoice>> GetAllAsync(int pageNumber, int pageSize)
     {
         return await _context.Invoices
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(invoice => invoice.Details)
-            .OrderByDescending(invoice => invoice.Date)
+            .OrderByDescending(invoice => invoice.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+    }
+
+    public async Task<int> CountAsync()
+    {
+        return await _context.Invoices.CountAsync();
     }
 
     public async Task<Invoice?> GetByIdAsync(int id)
     {
         return await _context.Invoices
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(invoice => invoice.Details)
             .FirstOrDefaultAsync(invoice => invoice.Id == id);
     }

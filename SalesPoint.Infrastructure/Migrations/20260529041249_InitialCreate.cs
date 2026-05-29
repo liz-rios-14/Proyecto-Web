@@ -1,6 +1,5 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -16,13 +15,13 @@ namespace SalesPoint.Infrastructure.Migrations
                 name: "customers",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    first_name = table.Column<string>(type: "character varying(80)", maxLength: 80, nullable: false),
-                    last_name = table.Column<string>(type: "character varying(80)", maxLength: 80, nullable: false),
-                    phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    address = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    email = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false)
+                    id = table.Column<int>(type: "NUMBER(10)", nullable: false)
+                        .Annotation("Oracle:Identity", "START WITH 1 INCREMENT BY 1"),
+                    first_name = table.Column<string>(type: "NVARCHAR2(80)", maxLength: 80, nullable: false),
+                    last_name = table.Column<string>(type: "NVARCHAR2(80)", maxLength: 80, nullable: false),
+                    phone = table.Column<string>(type: "NVARCHAR2(20)", maxLength: 20, nullable: false),
+                    address = table.Column<string>(type: "NVARCHAR2(150)", maxLength: 150, nullable: false),
+                    email = table.Column<string>(type: "NVARCHAR2(120)", maxLength: 120, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -33,10 +32,11 @@ namespace SalesPoint.Infrastructure.Migrations
                 name: "invoices",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    customer_id = table.Column<int>(type: "integer", nullable: false),
-                    date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<int>(type: "NUMBER(10)", nullable: false)
+                        .Annotation("Oracle:Identity", "START WITH 1 INCREMENT BY 1"),
+                    customer_id = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    date = table.Column<DateTime>(type: "TIMESTAMP(7)", nullable: false),
+                    invoice_number = table.Column<string>(type: "NVARCHAR2(20)", maxLength: 20, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -47,11 +47,11 @@ namespace SalesPoint.Infrastructure.Migrations
                 name: "products",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    id = table.Column<int>(type: "NUMBER(10)", nullable: false)
+                        .Annotation("Oracle:Identity", "START WITH 1 INCREMENT BY 1"),
+                    name = table.Column<string>(type: "NVARCHAR2(120)", maxLength: 120, nullable: false),
                     price = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    stock = table.Column<int>(type: "integer", nullable: false)
+                    stock = table.Column<int>(type: "NUMBER(10)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -62,13 +62,13 @@ namespace SalesPoint.Infrastructure.Migrations
                 name: "invoice_details",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    product_id = table.Column<int>(type: "integer", nullable: false),
-                    product_name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    id = table.Column<int>(type: "NUMBER(10)", nullable: false)
+                        .Annotation("Oracle:Identity", "START WITH 1 INCREMENT BY 1"),
+                    product_id = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    product_name = table.Column<string>(type: "NVARCHAR2(120)", maxLength: 120, nullable: false),
                     price = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
-                    quantity = table.Column<int>(type: "integer", nullable: false),
-                    InvoiceId = table.Column<int>(type: "integer", nullable: true)
+                    quantity = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    InvoiceId = table.Column<int>(type: "NUMBER(10)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -84,6 +84,12 @@ namespace SalesPoint.Infrastructure.Migrations
                 name: "IX_invoice_details_InvoiceId",
                 table: "invoice_details",
                 column: "InvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_invoices_invoice_number",
+                table: "invoices",
+                column: "invoice_number",
+                unique: true);
         }
 
         /// <inheritdoc />

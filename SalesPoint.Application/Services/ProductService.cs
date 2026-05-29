@@ -22,21 +22,19 @@ public sealed class ProductService : IProductService
         int pageNumber,
         int pageSize)
     {
-        var data = await _repository.SearchAsync(field, value);
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 8 : pageSize;
 
-        var totalItems = data.Count;
+        var data = await _repository.SearchAsync(field, value, pageNumber, pageSize);
+        var totalItems = await _repository.CountAsync(field, value);
 
-        var items = data
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Select(product => new ProductDto
-            {
-                Id = product.Id,
-                Name = product.Name,
-                Price = product.Price,
-                Stock = product.Stock
-            })
-            .ToList();
+        var items = data.Select(product => new ProductDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Price = product.Price,
+            Stock = product.Stock
+        }).ToList();
 
         return new PagedResponse<ProductDto>
         {

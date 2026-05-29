@@ -16,9 +16,11 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 8)
     {
-        var result = await _invoiceService.GetAllAsync();
+        var result = await _invoiceService.GetAllAsync(pageNumber, pageSize);
         return Ok(result);
     }
 

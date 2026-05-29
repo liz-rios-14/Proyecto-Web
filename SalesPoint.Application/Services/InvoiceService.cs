@@ -3,7 +3,7 @@ using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Application.Interfaces.Services;
 using SalesPoint.Domain.Entities;
 using SalesPoint.Domain.Exceptions;
-
+using SalesPoint.Application.DTOs.Common;
 namespace SalesPoint.Application.Services;
 
 public sealed class InvoiceService : IInvoiceService
@@ -64,9 +64,14 @@ public sealed class InvoiceService : IInvoiceService
         return dto;
     }
 
-    public async Task<List<InvoiceHistoryDto>> GetAllAsync()
+    public async Task<PagedResponse<InvoiceHistoryDto>> GetAllAsync(int pageNumber, int pageSize)
     {
-        var invoices = await _invoiceRepository.GetAllAsync();
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 8 : pageSize;
+
+        var invoices = await _invoiceRepository.GetAllAsync(pageNumber, pageSize);
+        var totalItems = await _invoiceRepository.CountAsync();
+
         var result = new List<InvoiceHistoryDto>();
 
         foreach (var invoice in invoices)
@@ -88,9 +93,15 @@ public sealed class InvoiceService : IInvoiceService
             });
         }
 
-        return result;
+        return new PagedResponse<InvoiceHistoryDto>
+        {
+            Items = result,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
+        };
     }
-
     public async Task<InvoiceDto?> GetByIdAsync(int id)
     {
         var invoice = await _invoiceRepository.GetByIdAsync(id);

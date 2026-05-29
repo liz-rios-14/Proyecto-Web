@@ -3,7 +3,10 @@ import Layout from "../components/Layout";
 import DataTable from "../components/DataTable";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
+import Pagination from "../components/Pagination";
 import { getInvoices, getInvoiceById } from "../api/invoiceApi";
+
+const PAGE_SIZE = 8;
 
 const invoiceColumns = [
   { key: "invoiceNumber", label: "Factura" },
@@ -37,25 +40,33 @@ export default function InvoiceHistoryPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchField, setSearchField] = useState("invoiceNumber");
   const [searchValue, setSearchValue] = useState("");
-
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const firstViewButtonRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  const loadInvoices = async () => {
+  const loadInvoices = async (currentPage = page) => {
     try {
-      const data = await getInvoices();
+      const data = await getInvoices(currentPage, PAGE_SIZE);
 
-      const formattedInvoices = data.map((invoice) => ({
+      const formattedInvoices = (data.items ?? []).map((invoice) => ({
         ...invoice,
         formattedDate: formatDateTime(invoice.date),
       }));
 
       setInvoices(formattedInvoices);
+      setTotalPages(data.totalPages ?? 1);
       setSelectedIndex(0);
     } catch (error) {
       console.error("Error cargando facturas:", error);
       alert("No se pudo cargar el historial de facturas.");
     }
+  };
+
+  const handleReload = () => {
+    setSearchValue("");
+    setPage(1);
+    loadInvoices(1);
   };
 
   const filteredInvoices = useMemo(() => {
@@ -65,9 +76,7 @@ export default function InvoiceHistoryPage() {
 
     return invoices.filter((invoice) => {
       const fieldValue = invoice[searchField];
-
       if (fieldValue === null || fieldValue === undefined) return false;
-
       return String(fieldValue).toUpperCase().includes(value);
     });
   }, [invoices, searchField, searchValue]);
@@ -75,7 +84,6 @@ export default function InvoiceHistoryPage() {
   const viewInvoice = async (id) => {
     try {
       const data = await getInvoiceById(id);
-
       setSelectedInvoice(data);
       setShowPreview(true);
     } catch (error) {
@@ -91,17 +99,14 @@ export default function InvoiceHistoryPage() {
 
   const viewSelectedInvoice = () => {
     if (filteredInvoices.length === 0) return;
-
     const invoice = filteredInvoices[selectedIndex];
-
     if (!invoice) return;
-
     viewInvoice(invoice.id);
   };
 
   useEffect(() => {
-    loadInvoices();
-  }, []);
+    loadInvoices(page);
+  }, [page]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -152,7 +157,7 @@ export default function InvoiceHistoryPage() {
       {
         ctrl: true,
         key: "r",
-        action: loadInvoices,
+        action: handleReload,
       },
     ],
     [filteredInvoices, selectedIndex, selectedInvoice]
@@ -196,7 +201,9 @@ export default function InvoiceHistoryPage() {
             onChange={(event) => setSearchValue(event.target.value)}
           />
 
-          <button onClick={loadInvoices}>🔄 Recargar</button>
+          <button type="button" onClick={handleReload}>
+            🔄 Recargar
+          </button>
         </div>
       </div>
 
@@ -213,12 +220,21 @@ export default function InvoiceHistoryPage() {
           onRowClick={(invoice) => viewInvoice(invoice.id)}
           actions={(invoice) => (
             <button
+              type="button"
               ref={invoice.isSelected ? firstViewButtonRef : null}
               onClick={() => viewInvoice(invoice.id)}
             >
               👁️ Ver factura
             </button>
           )}
+        />
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPrevious={() => setPage((current) => Math.max(current - 1, 1))}
+          onNext={() => setPage((current) => Math.min(current + 1, totalPages))}
+          onPageChange={(newPage) => setPage(newPage)}
         />
       </div>
 

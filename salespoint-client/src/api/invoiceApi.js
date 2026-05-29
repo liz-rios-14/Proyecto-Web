@@ -1,7 +1,13 @@
 import { api } from "./apiClient";
 
-export const getInvoices = async () => {
-  const response = await api.get("/invoices");
+export const getInvoices = async (pageNumber = 1, pageSize = 8) => {
+  const response = await api.get("/invoices", {
+    params: {
+      pageNumber,
+      pageSize,
+    },
+  });
+
   return response.data;
 };
 
