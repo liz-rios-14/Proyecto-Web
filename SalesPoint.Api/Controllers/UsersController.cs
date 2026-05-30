@@ -1,0 +1,16 @@
+using Microsoft.AspNetCore.Mvc;
+using SalesPoint.Application.DTOs.Users;
+using SalesPoint.Application.Interfaces.Services;
+namespace SalesPoint.Api.Controllers;
+[ApiController]
+[Route("api/users")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _service;
+    public UsersController(IUserService service) => _service = service;
+    [HttpGet] public async Task<IActionResult> GetAll() => Ok(await _service.GetAllAsync());
+    [HttpGet("{id}")] public async Task<IActionResult> GetById(int id) => (await _service.GetByIdAsync(id)) is { } result ? Ok(result) : NotFound("Usuario no encontrado.");
+    [HttpPost] public async Task<IActionResult> Create([FromBody] CreateUserRequest request) => Ok(await _service.CreateAsync(request));
+    [HttpPut("{id}")] public async Task<IActionResult> Update(int id, [FromBody] UpdateUserRequest request) { await _service.UpdateAsync(id, request); return Ok("Usuario actualizado correctamente."); }
+    [HttpPost("{id}/disable")] public async Task<IActionResult> Disable(int id) { await _service.DisableAsync(id); return Ok("Usuario desactivado correctamente."); }
+}

@@ -1,4 +1,4 @@
-﻿using SalesPoint.Domain.Common;
+using SalesPoint.Domain.Common;
 using SalesPoint.Domain.Exceptions;
 
 namespace SalesPoint.Domain.Entities;
@@ -10,57 +10,51 @@ public class Invoice : BaseEntity
     public int CustomerId { get; private set; }
     public DateTime Date { get; private set; }
     public string InvoiceNumber { get; private set; } = string.Empty;
+    public string Status { get; private set; } = "Confirmed";
 
     public IReadOnlyCollection<InvoiceDetail> Details => _details.AsReadOnly();
-
     public decimal Subtotal => _details.Sum(x => x.Subtotal);
     public decimal Tax => decimal.Round(Subtotal * 0.12m, 2);
     public decimal Total => Subtotal + Tax;
 
-    private Invoice()
-    {
-    }
+    private Invoice() { }
 
     public Invoice(int customerId)
     {
-        if (customerId <= 0)
-            throw new DomainException("El cliente es obligatorio.");
-
+        if (customerId <= 0) throw new DomainException("El cliente es obligatorio.");
         CustomerId = customerId;
         Date = DateTime.UtcNow;
+        Status = "Confirmed";
     }
 
     public void AssignInvoiceNumber(int sequence)
     {
-        if (sequence <= 0)
-            throw new DomainException("La secuencia de factura no es válida.");
-
+        if (sequence <= 0) throw new DomainException("La secuencia de factura no es válida.");
         InvoiceNumber = $"FAC-{sequence:D10}";
     }
 
     public void AddDetail(Product product, int quantity)
     {
-        if (product is null)
-            throw new DomainException("El producto es obligatorio.");
-
+        if (product is null) throw new DomainException("El producto es obligatorio.");
         product.DecreaseStock(quantity);
+        _details.Add(new InvoiceDetail(product.Id, product.Name, product.Price, quantity));
+    }
 
-        var detail = new InvoiceDetail(
-            product.Id,
-            product.Name,
-            product.Price,
-            quantity
-        );
+    public void Confirm()
+    {
+        if (Status == "Cancelled") throw new DomainException("No se puede confirmar una venta cancelada.");
+        Status = "Confirmed";
+    }
 
-        _details.Add(detail);
+    public void Cancel()
+    {
+        if (Status == "Cancelled") throw new DomainException("La venta ya está cancelada.");
+        Status = "Cancelled";
     }
 
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(InvoiceNumber))
-            throw new DomainException("El número de factura es obligatorio.");
-
-        if (!_details.Any())
-            throw new DomainException("La factura debe tener al menos un producto.");
+        if (string.IsNullOrWhiteSpace(InvoiceNumber)) throw new DomainException("El número de factura es obligatorio.");
+        if (!_details.Any()) throw new DomainException("La factura debe tener al menos un producto.");
     }
 }

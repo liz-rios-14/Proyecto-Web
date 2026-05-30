@@ -1,9 +1,9 @@
 using SalesPoint.Domain.Entities;
 namespace SalesPoint.Application.Interfaces.Repositories;
-public interface IInvoiceRepository
+public interface ISaleRepository
 {
-    Task<Invoice> CreateAsync(Invoice invoice);
-    Task UpdateAsync(Invoice invoice);
+    Task<Invoice> CreateAsync(Invoice sale);
+    Task UpdateAsync(Invoice sale);
     Task<List<Invoice>> GetAllAsync();
     Task<Invoice?> GetByIdAsync(int id);
 }
