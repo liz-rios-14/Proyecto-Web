@@ -63,6 +63,36 @@ public class Invoice : BaseEntity
         if (string.IsNullOrWhiteSpace(InvoiceNumber))
             throw new DomainException("El número de factura es obligatorio.");
 
+        ValidateDetails();
+    }
+
+    public void Confirm()
+    {
+        ValidateCustomer();
+        ValidateDetails();
+
+        if (Status != SaleStatus.Draft)
+            throw new InvalidSaleStateException("Solo una venta en borrador puede confirmarse.");
+
+        Status = SaleStatus.Confirmed;
+    }
+
+    public void Cancel()
+    {
+        if (Status != SaleStatus.Confirmed)
+            throw new InvalidSaleStateException("Solo una venta confirmada puede cancelarse.");
+
+        Status = SaleStatus.Cancelled;
+    }
+
+    private void ValidateCustomer()
+    {
+        if (CustomerId <= 0)
+            throw new DomainException("El cliente es obligatorio.");
+    }
+
+    private void ValidateDetails()
+    {
         if (!_details.Any())
             throw new DomainException("La factura debe tener al menos un producto.");
     }
