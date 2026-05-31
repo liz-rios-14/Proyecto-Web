@@ -34,7 +34,23 @@ public sealed class InvoiceRepository : IInvoiceRepository
 
             await _context.Invoices.AddAsync(invoice);
 
-            //bloquea internamente, genera un nuevo número de factura, y luego guarda los cambios
+            // Bloquea internamente, genera un nuevo número de factura y guarda factura + stock actualizado.
+            await _context.SaveChangesAsync();
+
+            foreach (var detail in invoice.Details)
+            {
+                var product = await _context.Products
+                    .FirstAsync(item => item.Id == detail.ProductId);
+
+                await _context.StockMovements.AddAsync(new StockMovement(
+                    detail.ProductId,
+                    "SALE_CONFIRMED",
+                    detail.Quantity * -1,
+                    product.Stock,
+                    $"Venta confirmada {invoice.InvoiceNumber}",
+                    invoiceId: invoice.Id));
+            }
+
             await _context.SaveChangesAsync();
 
             await transaction.CommitAsync();
