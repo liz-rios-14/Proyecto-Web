@@ -1,11 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Domain.Entities;
 using System.Data;
 
 namespace SalesPoint.Infrastructure.Persistence.Repositories;
 
-public sealed class InvoiceRepository : IInvoiceRepository
+public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
 {
     private readonly AppDbContext _context;
 
@@ -39,8 +39,27 @@ public sealed class InvoiceRepository : IInvoiceRepository
         });
     }
 
+    public async Task UpdateAsync(Invoice invoice)
+    {
+        _context.Invoices.Update(invoice);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Invoice>> GetAllAsync()
+    {
+        return await _context.Invoices
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(invoice => invoice.Details)
+            .OrderByDescending(invoice => invoice.Date)
+            .ToListAsync();
+    }
+
     public async Task<List<Invoice>> GetAllAsync(int pageNumber, int pageSize)
     {
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 8 : pageSize;
+
         return await _context.Invoices
             .AsNoTracking()
             .AsSplitQuery()

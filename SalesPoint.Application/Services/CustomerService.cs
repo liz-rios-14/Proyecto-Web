@@ -1,7 +1,8 @@
-﻿using SalesPoint.Application.DTOs.Common;
+using SalesPoint.Application.DTOs.Common;
 using SalesPoint.Application.DTOs.Customers;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Application.Interfaces.Services;
+using SalesPoint.Application.Validators;
 using SalesPoint.Domain.Entities;
 using SalesPoint.Domain.Exceptions;
 
@@ -28,15 +29,7 @@ public sealed class CustomerService : ICustomerService
         var data = await _repository.SearchAsync(field, value, pageNumber, pageSize);
         var totalItems = await _repository.CountAsync(field, value);
 
-        var items = data.Select(customer => new CustomerDto
-        {
-            Id = customer.Id,
-            FirstName = customer.FirstName,
-            LastName = customer.LastName,
-            Phone = customer.Phone,
-            Address = customer.Address,
-            Email = customer.Email
-        }).ToList();
+        var items = data.Select(Map).ToList();
 
         return new PagedResponse<CustomerDto>
         {
@@ -50,24 +43,20 @@ public sealed class CustomerService : ICustomerService
 
     public async Task<CustomerDto?> GetByIdAsync(int id)
     {
-        var entity = await _repository.GetByIdAsync(id);
-
-        if (entity == null) return null;
-
-        return new CustomerDto
-        {
-            Id = entity.Id,
-            FirstName = entity.FirstName,
-            LastName = entity.LastName,
-            Phone = entity.Phone,
-            Address = entity.Address,
-            Email = entity.Email
-        };
+        var customer = await _repository.GetByIdAsync(id);
+        return customer is null ? null : Map(customer);
     }
 
     public async Task<CustomerDto> CreateAsync(CreateCustomerRequest request)
     {
-        var entity = new Customer(
+        ApplicationValidator.Required(request.FirstName, "El nombre del cliente");
+        ApplicationValidator.Required(request.LastName, "El apellido del cliente");
+        ApplicationValidator.Email(request.Email);
+
+        if (await _repository.ExistsByEmailAsync(request.Email))
+            throw new DomainException("Ya existe un cliente con el mismo correo.");
+
+        var customer = new Customer(
             request.FirstName,
             request.LastName,
             request.Phone,
@@ -75,27 +64,24 @@ public sealed class CustomerService : ICustomerService
             request.Email
         );
 
-        var created = await _repository.CreateAsync(entity);
+        await _repository.CreateAsync(customer);
 
-        return new CustomerDto
-        {
-            Id = created.Id,
-            FirstName = created.FirstName,
-            LastName = created.LastName,
-            Phone = created.Phone,
-            Address = created.Address,
-            Email = created.Email
-        };
+        return Map(customer);
     }
 
     public async Task UpdateAsync(int id, UpdateCustomerRequest request)
     {
-        var entity = await _repository.GetByIdAsync(id);
+        var customer = await _repository.GetByIdAsync(id)
+            ?? throw new DomainException("Cliente no encontrado.");
 
-        if (entity == null)
-            throw new DomainException("Cliente no encontrado.");
+        ApplicationValidator.Required(request.FirstName, "El nombre del cliente");
+        ApplicationValidator.Required(request.LastName, "El apellido del cliente");
+        ApplicationValidator.Email(request.Email);
 
-        entity.Update(
+        if (await _repository.ExistsByEmailAsync(request.Email, id))
+            throw new DomainException("Ya existe otro cliente con el mismo correo.");
+
+        customer.Update(
             request.FirstName,
             request.LastName,
             request.Phone,
@@ -103,16 +89,27 @@ public sealed class CustomerService : ICustomerService
             request.Email
         );
 
-        await _repository.UpdateAsync(entity);
+        await _repository.UpdateAsync(customer);
     }
 
     public async Task DeleteAsync(int id)
     {
-        var entity = await _repository.GetByIdAsync(id);
+        var customer = await _repository.GetByIdAsync(id)
+            ?? throw new DomainException("Cliente no encontrado.");
 
-        if (entity == null)
-            throw new DomainException("Cliente no encontrado.");
+        await _repository.DeleteAsync(customer);
+    }
 
-        await _repository.DeleteAsync(entity);
+    private static CustomerDto Map(Customer customer)
+    {
+        return new CustomerDto
+        {
+            Id = customer.Id,
+            FirstName = customer.FirstName,
+            LastName = customer.LastName,
+            Phone = customer.Phone,
+            Address = customer.Address,
+            Email = customer.Email
+        };
     }
 }

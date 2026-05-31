@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Domain.Entities;
 
@@ -29,7 +29,6 @@ public sealed class ProductRepository : IProductRepository
         pageNumber = pageNumber <= 0 ? 1 : pageNumber;
         pageSize = pageSize <= 0 ? 8 : pageSize;
 
-        
         return await query
             .OrderBy(product => product.Id)
             .Skip((pageNumber - 1) * pageSize)
@@ -41,6 +40,51 @@ public sealed class ProductRepository : IProductRepository
     {
         var query = BuildSearchQuery(field, value);
         return await query.CountAsync();
+    }
+
+    public async Task<Product?> GetByIdAsync(int id)
+    {
+        return await _context.Products
+            .FirstOrDefaultAsync(product => product.Id == id);
+    }
+
+    public async Task<Product?> GetByNameAsync(string name)
+    {
+        var cleanName = name.Trim().ToUpperInvariant();
+
+        return await _context.Products
+            .FirstOrDefaultAsync(product => product.Name == cleanName);
+    }
+
+    public async Task<bool> ExistsByNameAsync(string name, int? excludeId = null)
+    {
+        var cleanName = name.Trim().ToUpperInvariant();
+
+        return await _context.Products
+            .AsNoTracking()
+            .AnyAsync(product =>
+                product.Name == cleanName &&
+                (!excludeId.HasValue || product.Id != excludeId.Value));
+    }
+
+    public async Task<Product> CreateAsync(Product product)
+    {
+        await _context.Products.AddAsync(product);
+        await _context.SaveChangesAsync();
+
+        return product;
+    }
+
+    public async Task UpdateAsync(Product product)
+    {
+        _context.Products.Update(product);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(Product product)
+    {
+        _context.Products.Remove(product);
+        await _context.SaveChangesAsync();
     }
 
     private IQueryable<Product> BuildSearchQuery(string field, string value)
@@ -60,7 +104,7 @@ public sealed class ProductRepository : IProductRepository
             return query.Where(product => product.Id == id);
 
         if (cleanField == "name")
-            return query.Where(product => product.Name.Contains(cleanValue.ToUpper()));
+            return query.Where(product => product.Name.Contains(cleanValue.ToUpperInvariant()));
 
         if (cleanField == "price" && decimal.TryParse(cleanValue, out var price))
             return query.Where(product => product.Price == price);
@@ -69,31 +113,5 @@ public sealed class ProductRepository : IProductRepository
             return query.Where(product => product.Stock == stock);
 
         return query;
-    }
-
-    public async Task<Product?> GetByIdAsync(int id)
-    {
-        return await _context.Products
-            .AsNoTracking()
-            .FirstOrDefaultAsync(product => product.Id == id);
-    }
-
-    public async Task<Product> CreateAsync(Product product)
-    {
-        await _context.Products.AddAsync(product);
-        await _context.SaveChangesAsync();
-
-        return product;
-    }
-
-    public async Task UpdateAsync(Product product)
-    {
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(Product product)
-    {
-        _context.Products.Remove(product);
-        await _context.SaveChangesAsync();
     }
 }

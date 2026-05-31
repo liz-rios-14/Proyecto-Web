@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Domain.Entities;
 
@@ -42,6 +42,43 @@ public sealed class CustomerRepository : ICustomerRepository
         return await query.CountAsync();
     }
 
+    public async Task<Customer?> GetByIdAsync(int id)
+    {
+        return await _context.Customers
+            .FirstOrDefaultAsync(customer => customer.Id == id);
+    }
+
+    public async Task<bool> ExistsByEmailAsync(string email, int? excludeId = null)
+    {
+        var cleanEmail = email.Trim().ToLowerInvariant();
+
+        return await _context.Customers
+            .AsNoTracking()
+            .AnyAsync(customer =>
+                customer.Email == cleanEmail &&
+                (!excludeId.HasValue || customer.Id != excludeId.Value));
+    }
+
+    public async Task<Customer> CreateAsync(Customer customer)
+    {
+        await _context.Customers.AddAsync(customer);
+        await _context.SaveChangesAsync();
+
+        return customer;
+    }
+
+    public async Task UpdateAsync(Customer customer)
+    {
+        _context.Customers.Update(customer);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(Customer customer)
+    {
+        _context.Customers.Remove(customer);
+        await _context.SaveChangesAsync();
+    }
+
     private IQueryable<Customer> BuildSearchQuery(string field, string value)
     {
         var query = _context.Customers
@@ -70,34 +107,8 @@ public sealed class CustomerRepository : ICustomerRepository
             return query.Where(customer => customer.Address.Contains(cleanValue.ToUpper()));
 
         if (cleanField == "email")
-            return query.Where(customer => customer.Email.Contains(cleanValue.ToLower()));
+            return query.Where(customer => customer.Email.Contains(cleanValue.ToLowerInvariant()));
 
         return query;
-    }
-
-    public async Task<Customer?> GetByIdAsync(int id)
-    {
-        return await _context.Customers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(customer => customer.Id == id);
-    }
-
-    public async Task<Customer> CreateAsync(Customer customer)
-    {
-        await _context.Customers.AddAsync(customer);
-        await _context.SaveChangesAsync();
-
-        return customer;
-    }
-
-    public async Task UpdateAsync(Customer customer)
-    {
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(Customer customer)
-    {
-        _context.Customers.Remove(customer);
-        await _context.SaveChangesAsync();
     }
 }
