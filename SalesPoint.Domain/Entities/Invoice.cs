@@ -1,4 +1,5 @@
-﻿using SalesPoint.Domain.Common;
+using SalesPoint.Domain.Common;
+using SalesPoint.Domain.Enums;
 using SalesPoint.Domain.Exceptions;
 
 namespace SalesPoint.Domain.Entities;
@@ -10,6 +11,7 @@ public class Invoice : BaseEntity
     public int CustomerId { get; private set; }
     public DateTime Date { get; private set; }
     public string InvoiceNumber { get; private set; } = string.Empty;
+    public SaleStatus Status { get; private set; } = SaleStatus.Draft;
 
     public IReadOnlyCollection<InvoiceDetail> Details => _details.AsReadOnly();
 
@@ -28,6 +30,7 @@ public class Invoice : BaseEntity
 
         CustomerId = customerId;
         Date = DateTime.UtcNow;
+        Status = SaleStatus.Draft;
     }
 
     public void AssignInvoiceNumber(int sequence)

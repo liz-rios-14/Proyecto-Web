@@ -69,7 +69,7 @@ public class Product : BaseEntity
             throw new DomainException("La cantidad debe ser mayor a cero.");
 
         if (quantity > Stock)
-            throw new DomainException("No existe stock suficiente.");
+            throw new InsufficientStockException("No existe stock suficiente.");
 
         Stock -= quantity;
     }
