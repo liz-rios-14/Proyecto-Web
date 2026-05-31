@@ -29,6 +29,7 @@ public sealed class ProductRepository : IProductRepository
         pageNumber = pageNumber <= 0 ? 1 : pageNumber;
         pageSize = pageSize <= 0 ? 8 : pageSize;
 
+        
         return await query
             .OrderBy(product => product.Id)
             .Skip((pageNumber - 1) * pageSize)
