@@ -7,6 +7,7 @@ namespace SalesPoint.Domain.Entities;
 public class Invoice : BaseEntity
 {
     private readonly List<InvoiceDetail> _details = new();
+    private readonly Dictionary<int, Product> _products = new();
 
     public int CustomerId { get; private set; }
     public DateTime Date { get; private set; }
@@ -46,7 +47,8 @@ public class Invoice : BaseEntity
         if (product is null)
             throw new DomainException("El producto es obligatorio.");
 
-        product.DecreaseStock(quantity);
+        if (_details.Any(x => x.ProductId == product.Id))
+            throw new DuplicateProductException("El producto ya fue agregado a la factura.");
 
         var detail = new InvoiceDetail(
             product.Id,
@@ -56,6 +58,7 @@ public class Invoice : BaseEntity
         );
 
         _details.Add(detail);
+        _products[product.Id] = product;
     }
 
     public void Validate()
@@ -74,6 +77,9 @@ public class Invoice : BaseEntity
         if (Status != SaleStatus.Draft)
             throw new InvalidSaleStateException("Solo una venta en borrador puede confirmarse.");
 
+        ValidateStock();
+        DecreaseStock();
+
         Status = SaleStatus.Confirmed;
     }
 
@@ -83,6 +89,14 @@ public class Invoice : BaseEntity
             throw new InvalidSaleStateException("Solo una venta confirmada puede cancelarse.");
 
         Status = SaleStatus.Cancelled;
+    }
+
+    public void Delete()
+    {
+        if (Status == SaleStatus.Confirmed)
+            throw new InvalidSaleStateException("No se puede eliminar una venta confirmada.");
+
+        IsDeleted = true;
     }
 
     private void ValidateCustomer()
@@ -95,5 +109,26 @@ public class Invoice : BaseEntity
     {
         if (!_details.Any())
             throw new DomainException("La factura debe tener al menos un producto.");
+    }
+
+    private void ValidateStock()
+    {
+        foreach (var detail in _details)
+        {
+            if (!_products.TryGetValue(detail.ProductId, out var product))
+                throw new DomainException("No se pudo validar el stock del producto.");
+
+            if (detail.Quantity > product.Stock)
+                throw new InsufficientStockException("No existe stock suficiente.");
+        }
+    }
+
+    private void DecreaseStock()
+    {
+        foreach (var detail in _details)
+        {
+            var product = _products[detail.ProductId];
+            product.DecreaseStock(detail.Quantity);
+        }
     }
 }
