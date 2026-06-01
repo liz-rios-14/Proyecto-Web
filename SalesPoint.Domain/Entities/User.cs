@@ -9,6 +9,7 @@ public sealed class User : BaseEntity
     public int RoleId { get; private set; }
     public string FullName { get; private set; } = string.Empty;
     public string UserName { get; private set; } = string.Empty;
+    public string Username => UserName;
     public string Email { get; private set; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
     public bool IsActive { get; private set; } = true;
@@ -40,6 +41,11 @@ public sealed class User : BaseEntity
         RoleId = roleId;
     }
 
+    public void SetRoleId(int roleId)
+    {
+        SetRole(roleId);
+    }
+
     public void SetFullName(string fullName)
     {
         if (string.IsNullOrWhiteSpace(fullName))
@@ -54,6 +60,11 @@ public sealed class User : BaseEntity
             throw new DomainException("El nombre de usuario es obligatorio.");
 
         UserName = userName.Trim().ToLowerInvariant();
+    }
+
+    public void SetUsername(string userName)
+    {
+        SetUserName(userName);
     }
 
     public void SetEmail(string email)
@@ -86,7 +97,27 @@ public sealed class User : BaseEntity
         IsActive = isActive;
     }
 
-    public void Activate() => IsActive = true;
-    public void Deactivate() => IsActive = false;
-    public void Disable() => Deactivate();
+    public void Update(string userName, string email, string passwordHash, int roleId)
+    {
+        SetUserName(userName);
+        SetFullName(userName);
+        SetEmail(email);
+        SetPasswordHash(passwordHash);
+        SetRole(roleId);
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+    }
+
+    public void Disable()
+    {
+        Deactivate();
+    }
 }

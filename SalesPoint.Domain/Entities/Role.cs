@@ -18,27 +18,45 @@ public sealed class Role : BaseEntity
     public Role(string name, string description = "")
     {
         SetName(name);
-        Description = description?.Trim() ?? string.Empty;
+        SetDescription(description);
         IsActive = true;
     }
 
     public void SetName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("El rol es obligatorio.");
+            throw new DomainException("El nombre del rol es obligatorio.");
 
         var cleanName = name.Trim().ToUpperInvariant();
 
-        if (cleanName.Length > 40)
-            throw new DomainException("El rol no puede superar los 40 caracteres.");
+        if (cleanName.Length < 2)
+            throw new DomainException("El nombre del rol debe tener al menos 2 caracteres.");
+
+        if (cleanName.Length > 50)
+            throw new DomainException("El nombre del rol no puede superar los 50 caracteres.");
 
         Name = cleanName;
+    }
+
+    public void SetDescription(string description)
+    {
+        var cleanDescription = description?.Trim().ToUpperInvariant() ?? string.Empty;
+
+        if (cleanDescription.Length > 200)
+            throw new DomainException("La descripción del rol no puede superar los 200 caracteres.");
+
+        Description = cleanDescription;
     }
 
     public void Update(string name, string description)
     {
         SetName(name);
-        Description = description?.Trim() ?? string.Empty;
+        SetDescription(description);
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
     }
 
     public void Deactivate()

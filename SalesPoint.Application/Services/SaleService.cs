@@ -168,7 +168,7 @@ public sealed class SaleService : ISaleService
                     ? "Cliente no encontrado"
                     : $"{customer.FirstName} {customer.LastName}",
                 Date = sale.Date,
-                Status = sale.Status,
+                Status = sale.Status.ToString(),
                 Total = sale.Total
             });
         }
@@ -202,7 +202,7 @@ public sealed class SaleService : ISaleService
             CustomerId = sale.CustomerId,
             CustomerName = customerName,
             Date = sale.Date,
-            Status = sale.Status,
+            Status = sale.Status.ToString(),
             Subtotal = sale.Subtotal,
             Tax = sale.Tax,
             Total = sale.Total,
