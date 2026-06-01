@@ -33,6 +33,22 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
             await _context.Invoices.AddAsync(invoice);
             await _context.SaveChangesAsync();
 
+            foreach (var detail in invoice.Details)
+            {
+                var product = await _context.Products
+                    .FirstAsync(item => item.Id == detail.ProductId);
+
+                await _context.StockMovements.AddAsync(new StockMovement(
+                    detail.ProductId,
+                    "SALE_CONFIRMED",
+                    detail.Quantity * -1,
+                    product.Stock,
+                    $"Venta confirmada {invoice.InvoiceNumber}",
+                    invoiceId: invoice.Id));
+            }
+
+            await _context.SaveChangesAsync();
+
             await transaction.CommitAsync();
 
             return invoice;

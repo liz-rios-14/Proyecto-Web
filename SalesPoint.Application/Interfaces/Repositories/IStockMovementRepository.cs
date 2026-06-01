@@ -1,8 +1,10 @@
 using SalesPoint.Domain.Entities;
+
 namespace SalesPoint.Application.Interfaces.Repositories;
+
 public interface IStockMovementRepository
 {
-    Task<List<StockMovement>> GetAllAsync();
+    Task<StockMovement> CreateAsync(StockMovement stockMovement);
     Task<List<StockMovement>> GetByProductIdAsync(int productId);
-    Task<StockMovement> CreateAsync(StockMovement movement);
+    Task<List<StockMovement>> GetAllAsync();
 }

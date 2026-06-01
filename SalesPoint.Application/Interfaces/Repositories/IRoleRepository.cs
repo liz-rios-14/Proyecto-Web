@@ -1,5 +1,7 @@
 using SalesPoint.Domain.Entities;
+
 namespace SalesPoint.Application.Interfaces.Repositories;
+
 public interface IRoleRepository
 {
     Task<List<Role>> GetAllAsync();
