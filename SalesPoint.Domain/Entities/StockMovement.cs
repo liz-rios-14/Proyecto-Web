@@ -23,8 +23,8 @@ public sealed class StockMovement : BaseEntity
         int productId,
         string movementType,
         int quantity,
-        int stockAfter,
-        string reason,
+        int stockAfter = 0,
+        string reason = "",
         int? saleId = null,
         int? invoiceId = null)
     {
