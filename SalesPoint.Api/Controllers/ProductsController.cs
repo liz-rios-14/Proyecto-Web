@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SalesPoint.Application.DTOs.Products;
 using SalesPoint.Application.Interfaces.Services;
 
 namespace SalesPoint.Api.Controllers;
 
 [ApiController]
+[Authorize(Roles = "ADMINISTRATOR,SELLER")]
 [Route("api/products")]
 public class ProductsController : ControllerBase
 {

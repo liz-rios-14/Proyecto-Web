@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SalesPoint.Application.Interfaces.Repositories;
+using SalesPoint.Application.Interfaces.Security;
 using SalesPoint.Infrastructure.Persistence;
 using SalesPoint.Infrastructure.Persistence.Repositories;
+using SalesPoint.Infrastructure.Security;
 
 namespace SalesPoint.Infrastructure;
 
@@ -27,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
         services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }

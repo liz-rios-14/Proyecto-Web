@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SalesPoint.Application.DTOs.Customers;
 using SalesPoint.Application.Interfaces.Services;
 
 namespace SalesPoint.Api.Controllers;
 
 [ApiController]
+[Authorize(Roles = "ADMINISTRATOR,SELLER")]
 [Route("api/customers")]
 public class CustomersController : ControllerBase
 {
