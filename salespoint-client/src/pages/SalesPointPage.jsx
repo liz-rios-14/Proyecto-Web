@@ -5,6 +5,9 @@ import SearchModal from "../components/SearchModal";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
+import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "../components/AppAlert";
+import { getAuthUser } from "../services/authStorage";
 
 const formatDateTime = (date) => {
   const pad = (value) => String(value).padStart(2, "0");
@@ -23,13 +26,15 @@ const toNumber = (value, defaultValue = 0) => {
 
 export default function SalesPointPage() {
   const location = useLocation();
+  const { showAlert } = useAppAlert();
+  const authUser = getAuthUser();
 
   const [invoiceDate, setInvoiceDate] = useState(formatDateTime(new Date()));
   const [customer, setCustomer] = useState(null);
   const [seller, setSeller] = useState({
-    userName: "admin",
-    fullName: "ADMINISTRADOR DEL SISTEMA",
-    role: "ADMINISTRATOR",
+    userName: authUser?.userName || "admin",
+    fullName: authUser?.userName || "ADMINISTRADOR DEL SISTEMA",
+    role: authUser?.roleName || "ADMINISTRATOR",
   });
 
   const [product, setProduct] = useState(null);
@@ -185,6 +190,27 @@ export default function SalesPointPage() {
   const total = Number((subtotal + iva).toFixed(2));
 
   const updateCustomerField = (field, value) => {
+    let cleanValue = value;
+
+    if (field === "firstName" || field === "lastName") {
+      cleanValue = value
+        .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "")
+        .toUpperCase()
+        .slice(0, 40);
+    }
+
+    if (field === "phone") {
+      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+    }
+
+    if (field === "address") {
+      cleanValue = value.toUpperCase().slice(0, 150);
+    }
+
+    if (field === "email") {
+      cleanValue = value.toLowerCase().slice(0, 120);
+    }
+
     setCustomer((currentCustomer) => ({
       id: currentCustomer?.id || 0,
       firstName: currentCustomer?.firstName || "",
@@ -193,10 +219,44 @@ export default function SalesPointPage() {
       address: currentCustomer?.address || "",
       email: currentCustomer?.email || "",
       ...currentCustomer,
-      [field]: value,
+      [field]: cleanValue,
     }));
 
     setCreatedInvoice(null);
+  };
+
+  const getCustomerValidationMessage = () => {
+    if (!customer?.id || Number(customer.id) <= 0) {
+      return "Seleccione un cliente válido.";
+    }
+
+    const firstName = customer.firstName?.trim() ?? "";
+    const lastName = customer.lastName?.trim() ?? "";
+    const phone = customer.phone?.trim() ?? "";
+    const address = customer.address?.trim() ?? "";
+    const email = customer.email?.trim() ?? "";
+
+    if (!firstName || !lastName || !phone || !address || !email) {
+      return "Complete todos los datos del cliente antes de facturar.";
+    }
+
+    if (firstName.length < 2 || lastName.length < 2) {
+      return "El nombre y apellido del cliente deben tener al menos 2 caracteres.";
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      return "El teléfono del cliente debe tener exactamente 10 dígitos.";
+    }
+
+    if (address.length < 5) {
+      return "La dirección del cliente debe tener al menos 5 caracteres.";
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return "El correo del cliente no tiene un formato válido.";
+    }
+
+    return "";
   };
 
   const auditComparison = useMemo(() => {
@@ -364,12 +424,12 @@ export default function SalesPointPage() {
 
   const addProductToDetail = () => {
     if (!product) {
-      alert("Seleccione un producto.");
+      showAlert("Seleccione un producto.", "warning");
       return;
     }
 
     if (!quantity || Number(quantity) <= 0) {
-      alert("Ingrese una cantidad válida.");
+      showAlert("Ingrese una cantidad válida.", "warning");
       return;
     }
 
@@ -379,7 +439,10 @@ export default function SalesPointPage() {
     const finalQuantity = currentQuantity + requestedQuantity;
 
     if (finalQuantity > Number(product.stock)) {
-      alert("La cantidad no puede superar el stock disponible.");
+      showAlert(
+        "La cantidad no puede superar el stock disponible.",
+        "warning"
+      );
       return;
     }
 
@@ -432,12 +495,12 @@ export default function SalesPointPage() {
         if (item.id !== productId) return item;
 
         if (newQuantity <= 0) {
-          alert("La cantidad debe ser mayor a cero.");
+          showAlert("La cantidad debe ser mayor a cero.", "warning");
           return item;
         }
 
         if (newQuantity > Number(item.stock)) {
-          alert("No puede superar el stock disponible.");
+          showAlert("No puede superar el stock disponible.", "warning");
           return item;
         }
 
@@ -460,9 +523,9 @@ export default function SalesPointPage() {
   const cleanInvoice = () => {
     setCustomer(null);
     setSeller({
-      userName: "admin",
-      fullName: "ADMINISTRADOR DEL SISTEMA",
-      role: "ADMINISTRATOR",
+      userName: authUser?.userName || "admin",
+      fullName: authUser?.userName || "ADMINISTRADOR DEL SISTEMA",
+      role: authUser?.roleName || "ADMINISTRATOR",
     });
     setProduct(null);
     setQuantity("");
@@ -481,18 +544,15 @@ export default function SalesPointPage() {
   };
 
   const openPreview = () => {
-    if (!customer) {
-      alert("Seleccione o complete el cliente.");
-      return;
-    }
+    const customerValidationMessage = getCustomerValidationMessage();
 
-    if (!customer.firstName && !customer.lastName) {
-      alert("Ingrese el nombre o apellido del cliente.");
+    if (customerValidationMessage) {
+      showAlert(customerValidationMessage, "warning");
       return;
     }
 
     if (details.length === 0) {
-      alert("Agregue al menos un producto.");
+      showAlert("Agregue al menos un producto.", "warning");
       return;
     }
 
@@ -501,7 +561,19 @@ export default function SalesPointPage() {
     );
 
     if (hasInvalidQuantity) {
-      alert("Revise las cantidades del detalle.");
+      showAlert("Revise las cantidades del detalle.", "warning");
+      return;
+    }
+
+    const hasInsufficientStock = details.some(
+      (item) => Number(item.quantity) > Number(item.stock)
+    );
+
+    if (hasInsufficientStock) {
+      showAlert(
+        "Una o más cantidades superan el stock disponible.",
+        "warning"
+      );
       return;
     }
 
@@ -511,19 +583,29 @@ export default function SalesPointPage() {
   const finishInvoice = async () => {
     if (createdInvoice?.invoiceNumber) return;
 
-    if (!customer) {
-      alert("Seleccione un cliente.");
+    const customerValidationMessage = getCustomerValidationMessage();
+
+    if (customerValidationMessage) {
+      showAlert(customerValidationMessage, "warning");
       return;
     }
 
     if (details.length === 0) {
-      alert("Agregue al menos un producto.");
+      showAlert("Agregue al menos un producto.", "warning");
       return;
     }
 
-    if (!customer.id || Number(customer.id) <= 0) {
-      alert(
-        "El cliente reconstruido no tiene ID válido. Seleccione nuevamente el cliente antes de facturar."
+    const invalidDetail = details.find(
+      (item) =>
+        !Number.isInteger(Number(item.quantity)) ||
+        Number(item.quantity) <= 0 ||
+        Number(item.quantity) > Number(item.stock)
+    );
+
+    if (invalidDetail) {
+      showAlert(
+        `Revise la cantidad de ${invalidDetail.name}. Debe ser mayor a cero y no superar el stock disponible.`,
+        "warning"
       );
       return;
     }
@@ -551,10 +633,16 @@ export default function SalesPointPage() {
           stock: Number(item.stock) - Number(item.quantity),
         }))
       );
+
+      showAlert(
+        `Factura ${response.data.invoiceNumber} generada correctamente.`,
+        "success"
+      );
     } catch (error) {
       console.error(error);
-      alert(
-        "No se pudo registrar la factura. Revise el stock disponible o seleccione otro producto."
+      showAlert(
+        getApiErrorMessage(error, "No se pudo registrar la factura."),
+        "error"
       );
     }
   };

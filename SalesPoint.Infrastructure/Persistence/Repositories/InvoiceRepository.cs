@@ -71,36 +71,57 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
             .ToListAsync();
     }
 
-    public async Task<List<Invoice>> GetAllAsync(int pageNumber, int pageSize)
+    public async Task<List<Invoice>> GetAllAsync(
+        int pageNumber,
+        int pageSize,
+        int? sellerId = null)
     {
         pageNumber = pageNumber <= 0 ? 1 : pageNumber;
         pageSize = pageSize <= 0 ? 8 : pageSize;
 
-        return await _context.Invoices
+        var query = _context.Invoices
             .AsNoTracking()
             .AsSplitQuery()
             .Include(invoice => invoice.Details)
+            .AsQueryable();
+
+        if (sellerId.HasValue)
+            query = query.Where(invoice => invoice.SellerId == sellerId.Value);
+
+        return await query
             .OrderByDescending(invoice => invoice.Id)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync()
+    public async Task<int> CountAsync(int? sellerId = null)
     {
-        return await _context.Invoices.CountAsync();
+        return sellerId.HasValue
+            ? await _context.Invoices.CountAsync(
+                invoice => invoice.SellerId == sellerId.Value)
+            : await _context.Invoices.CountAsync();
     }
 
-    public async Task<Invoice?> GetByIdAsync(int id)
+    public async Task<Invoice?> GetByIdAsync(int id, int? sellerId = null)
     {
         return await _context.Invoices
             .AsNoTracking()
             .AsSplitQuery()
             .Include(invoice => invoice.Details)
-            .FirstOrDefaultAsync(invoice => invoice.Id == id);
+            .FirstOrDefaultAsync(invoice =>
+                invoice.Id == id &&
+                (!sellerId.HasValue || invoice.SellerId == sellerId.Value));
     }
 
-    public async Task<Invoice?> GetByInvoiceNumberForAuditAsync(string invoiceNumber)
+    async Task<Invoice?> ISaleRepository.GetByIdAsync(int id)
+    {
+        return await GetByIdAsync(id);
+    }
+
+    public async Task<Invoice?> GetByInvoiceNumberForAuditAsync(
+        string invoiceNumber,
+        int? sellerId = null)
     {
         if (string.IsNullOrWhiteSpace(invoiceNumber))
             return null;
@@ -112,6 +133,7 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
             .AsSplitQuery()
             .Include(invoice => invoice.Details)
             .FirstOrDefaultAsync(invoice =>
-                invoice.InvoiceNumber.ToUpper() == cleanInvoiceNumber);
+                invoice.InvoiceNumber.ToUpper() == cleanInvoiceNumber &&
+                (!sellerId.HasValue || invoice.SellerId == sellerId.Value));
     }
 }

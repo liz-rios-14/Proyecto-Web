@@ -89,3 +89,10 @@ input[type="number"] {
     grid-template-columns: 1fr;
   }
 }
+
+.field-help {
+  margin: 0 0 14px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}

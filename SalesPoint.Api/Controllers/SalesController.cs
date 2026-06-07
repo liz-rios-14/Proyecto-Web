@@ -6,7 +6,7 @@ using SalesPoint.Application.Interfaces.Services;
 namespace SalesPoint.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "ADMINISTRATOR,SELLER")]
+[Authorize(Roles = "ADMINISTRATOR")]
 [Route("api/sales")]
 public class SalesController : ControllerBase
 {
@@ -28,7 +28,7 @@ public class SalesController : ControllerBase
     {
         return (await _service.GetInvoiceByIdAsync(id)) is { } result
             ? Ok(result)
-            : NotFound("Factura no encontrada.");
+            : NotFound(new { message = "Factura no encontrada." });
     }
 
     [HttpPost]

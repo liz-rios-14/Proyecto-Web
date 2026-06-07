@@ -21,32 +21,71 @@ public sealed class AuthService : IAuthService
         _jwtTokenGenerator = jwtTokenGenerator;
     }
 
-    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
+    public async Task<LoginResultDto> LoginAsync(LoginRequestDto request)
     {
-        ApplicationValidator.Required(request.UserNameOrEmail, "El usuario o correo");
-        ApplicationValidator.Required(request.Password, "La contrasena");
+        if (request is null)
+            return LoginResultDto.Failure(
+                "Los datos de inicio de sesión son obligatorios.");
 
-        var user = await _userRepository.GetByUserNameOrEmailAsync(request.UserNameOrEmail)
-            ?? throw new DomainException("Credenciales incorrectas.");
+        if (string.IsNullOrWhiteSpace(request.UserNameOrEmail))
+            return LoginResultDto.Failure("Ingrese su usuario o correo.");
 
-        if (!user.IsActive)
-            throw new DomainException("El usuario esta inactivo.");
+        if (string.IsNullOrWhiteSpace(request.Password))
+            return LoginResultDto.Failure("Ingrese su contraseña.");
+
+        var user = await _userRepository
+            .GetByUserNameOrEmailAsync(request.UserNameOrEmail);
+
+        if (user is null)
+            return LoginResultDto.Failure("Credenciales incorrectas.");
+
+        if (!user.IsActive || user.IsDeleted)
+        {
+            return LoginResultDto.Failure(
+                "El usuario está inactivo o eliminado.");
+        }
+
+        if (user.IsLocked)
+        {
+            return LoginResultDto.Failure(
+                "El usuario está bloqueado. Solicite al administrador que lo desbloquee.");
+        }
 
         if (user.PasswordHash != UserService.Hash(request.Password))
-            throw new DomainException("Credenciales incorrectas.");
+        {
+            user.RegisterFailedLoginAttempt();
+            await _userRepository.UpdateAsync(user);
+
+            if (user.IsLocked)
+            {
+                return LoginResultDto.Failure(
+                    "Usuario bloqueado por 3 intentos fallidos. Solicite el desbloqueo al administrador.");
+            }
+
+            var remainingAttempts = 3 - user.FailedLoginAttempts;
+            return LoginResultDto.Failure(
+                $"Credenciales incorrectas. Intentos restantes: {remainingAttempts}.");
+        }
+
+        if (user.FailedLoginAttempts > 0)
+        {
+            user.ResetFailedLoginAttempts();
+            await _userRepository.UpdateAsync(user);
+        }
 
         var roleName = user.Role?.Name ?? string.Empty;
         var token = _jwtTokenGenerator.Generate(user, roleName, out var expiration);
 
-        return new LoginResponseDto
-        {
-            UserId = user.Id,
-            UserName = user.UserName,
-            Email = user.Email,
-            RoleName = roleName,
-            Token = token,
-            Expiration = expiration
-        };
+        return LoginResultDto.Success(
+            new LoginResponseDto
+            {
+                UserId = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                RoleName = roleName,
+                Token = token,
+                Expiration = expiration
+            });
     }
 
     public async Task<ForgotPasswordResponseDto> ForgotPasswordAsync(ForgotPasswordRequestDto request)

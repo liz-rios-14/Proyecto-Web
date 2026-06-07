@@ -20,7 +20,11 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
-        return Ok(await _service.LoginAsync(request));
+        var result = await _service.LoginAsync(request);
+
+        return result.IsSuccess
+            ? Ok(result.Data)
+            : BadRequest(new { message = result.Message });
     }
 
     [AllowAnonymous]

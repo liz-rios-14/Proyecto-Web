@@ -49,6 +49,9 @@ public sealed class ProductService : IProductService
 
     public async Task<ProductDto> CreateAsync(CreateProductRequest request)
     {
+        if (request is null)
+            throw new DomainException("Los datos del producto son obligatorios.");
+
         ApplicationValidator.Required(request.Name, "El nombre del producto");
         ApplicationValidator.Positive(request.Price, "El precio");
         ApplicationValidator.NotNegative(request.Stock, "El stock");
@@ -69,6 +72,9 @@ public sealed class ProductService : IProductService
 
     public async Task UpdateAsync(int id, UpdateProductRequest request)
     {
+        if (request is null)
+            throw new DomainException("Los datos del producto son obligatorios.");
+
         var product = await _repository.GetByIdAsync(id)
             ?? throw new DomainException("Producto no encontrado.");
 

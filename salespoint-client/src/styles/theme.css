@@ -187,6 +187,10 @@ body.dark-mode .dashboard-summary p {
   color: #cbd5e1;
 }
 
+body.dark-mode .dashboard-section-title p {
+  color: #cbd5e1;
+}
+
 body.dark-mode .dashboard-card-icon {
   background: #263449;
 }

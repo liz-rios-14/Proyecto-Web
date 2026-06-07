@@ -29,5 +29,15 @@ export function clearAuthSession() {
 }
 
 export function isAuthenticated() {
-  return Boolean(getAuthToken());
+  const token = getAuthToken();
+  const user = getAuthUser();
+
+  if (!token || !user) return false;
+
+  if (user.expiration && new Date(user.expiration).getTime() <= Date.now()) {
+    clearAuthSession();
+    return false;
+  }
+
+  return true;
 }

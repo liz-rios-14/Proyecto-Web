@@ -49,6 +49,9 @@ public sealed class CustomerService : ICustomerService
 
     public async Task<CustomerDto> CreateAsync(CreateCustomerRequest request)
     {
+        if (request is null)
+            throw new DomainException("Los datos del cliente son obligatorios.");
+
         ApplicationValidator.Required(request.FirstName, "El nombre del cliente");
         ApplicationValidator.Required(request.LastName, "El apellido del cliente");
         ApplicationValidator.Email(request.Email);
@@ -71,6 +74,9 @@ public sealed class CustomerService : ICustomerService
 
     public async Task UpdateAsync(int id, UpdateCustomerRequest request)
     {
+        if (request is null)
+            throw new DomainException("Los datos del cliente son obligatorios.");
+
         var customer = await _repository.GetByIdAsync(id)
             ?? throw new DomainException("Cliente no encontrado.");
 

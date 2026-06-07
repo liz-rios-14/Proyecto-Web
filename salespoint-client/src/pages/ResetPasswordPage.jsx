@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { resetPassword } from "../api/authApi";
+import { getApiErrorMessage } from "../api/apiError";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -32,6 +33,11 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError("Ingrese un correo válido.");
+      return;
+    }
+
     if (!form.resetToken.trim()) {
       setError("Ingrese el token de recuperación.");
       return;
@@ -39,6 +45,31 @@ export default function ResetPasswordPage() {
 
     if (!form.newPassword.trim()) {
       setError("Ingrese la nueva contraseña.");
+      return;
+    }
+
+    if (form.newPassword.length < 8 || form.newPassword.length > 10) {
+      setError("La contraseña debe tener entre 8 y 10 caracteres.");
+      return;
+    }
+
+    if (!/[A-Z]/.test(form.newPassword)) {
+      setError("La contraseña debe incluir al menos una mayúscula.");
+      return;
+    }
+
+    if (!/[a-z]/.test(form.newPassword)) {
+      setError("La contraseña debe incluir al menos una minúscula.");
+      return;
+    }
+
+    if (!/[0-9]/.test(form.newPassword)) {
+      setError("La contraseña debe incluir al menos un número.");
+      return;
+    }
+
+    if (!/[^a-zA-Z0-9]/.test(form.newPassword)) {
+      setError("La contraseña debe incluir al menos un símbolo.");
       return;
     }
 
@@ -54,7 +85,7 @@ export default function ResetPasswordPage() {
       setSuccess("Contraseña actualizada correctamente.");
       setTimeout(() => navigate("/login", { replace: true }), 1200);
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo cambiar la contraseña.");
+      setError(getApiErrorMessage(err, "No se pudo cambiar la contraseña."));
     } finally {
       setLoading(false);
     }

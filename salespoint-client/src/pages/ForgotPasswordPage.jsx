@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { forgotPassword } from "../api/authApi";
+import { getApiErrorMessage } from "../api/apiError";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -18,12 +19,17 @@ export default function ForgotPasswordPage() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Ingrese un correo válido.");
+      return;
+    }
+
     try {
       setLoading(true);
       const result = await forgotPassword({ email: email.trim() });
       setResetToken(result.resetToken);
     } catch (err) {
-      setError(err.response?.data?.message || "No se pudo generar el token.");
+      setError(getApiErrorMessage(err, "No se pudo generar el token."));
     } finally {
       setLoading(false);
     }

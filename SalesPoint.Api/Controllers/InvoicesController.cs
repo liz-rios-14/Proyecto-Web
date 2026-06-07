@@ -22,10 +22,7 @@ public class InvoicesController : ControllerBase
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 8)
     {
-        var result = await _invoiceService.GetAllAsync(
-            pageNumber,
-            pageSize);
-
+        var result = await _invoiceService.GetAllAsync(pageNumber, pageSize);
         return Ok(result);
     }
 
@@ -35,33 +32,31 @@ public class InvoicesController : ControllerBase
         var result = await _invoiceService.GetByIdAsync(id);
 
         if (result is null)
-            return NotFound("Factura no encontrada.");
+            return NotFound(new { message = "Factura no encontrada." });
 
         return Ok(result);
     }
 
     [HttpGet("audit/{invoiceNumber}")]
-    public async Task<IActionResult> ReconstructByInvoiceNumber(
-        string invoiceNumber)
+    public async Task<IActionResult> ReconstructByInvoiceNumber(string invoiceNumber)
     {
-        var result = await _invoiceService
-            .ReconstructByInvoiceNumberAsync(invoiceNumber);
+        var result = await _invoiceService.ReconstructByInvoiceNumberAsync(invoiceNumber);
 
         if (result is null)
         {
-            return NotFound(
-                $"No existe una factura con número {invoiceNumber}");
+            return NotFound(new
+            {
+                message = $"No existe una factura con número {invoiceNumber}."
+            });
         }
 
         return Ok(result);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateInvoiceRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest request)
     {
         var result = await _invoiceService.CreateAsync(request);
-
         return Ok(result);
     }
 }

@@ -28,7 +28,7 @@ public class UsersController : ControllerBase
     {
         return (await _service.GetByIdAsync(id)) is { } result
             ? Ok(result)
-            : NotFound("Usuario no encontrado.");
+            : NotFound(new { message = "Usuario no encontrado." });
     }
 
     [HttpPost]
@@ -41,13 +41,20 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserRequest request)
     {
         await _service.UpdateAsync(id, request);
-        return Ok("Usuario actualizado correctamente.");
+        return Ok(new { message = "Usuario actualizado correctamente." });
     }
 
     [HttpPost("{id}/disable")]
     public async Task<IActionResult> Disable(int id)
     {
         await _service.DisableAsync(id);
-        return Ok("Usuario desactivado correctamente.");
+        return Ok(new { message = "Usuario desactivado correctamente." });
+    }
+
+    [HttpPost("{id}/unlock")]
+    public async Task<IActionResult> Unlock(int id)
+    {
+        await _service.UnlockAsync(id);
+        return Ok(new { message = "Usuario desbloqueado correctamente." });
     }
 }

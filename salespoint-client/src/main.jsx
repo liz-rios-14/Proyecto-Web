@@ -12,6 +12,7 @@ import "./styles/modals.css";
 import "./styles/alerts.css";
 import "./styles/login.css";
 import "./styles/dashboard.css";
+import "./styles/error-logs.css";
 import "./styles/theme.css";
 import "./styles/print.css";
 

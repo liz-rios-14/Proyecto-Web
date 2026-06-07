@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/authApi";
+import { getApiErrorMessage } from "../api/apiError";
 import { saveAuthSession } from "../services/authStorage";
+import { useAppAlert } from "../components/AppAlert";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { showAlert } = useAppAlert();
 
   const [form, setForm] = useState({
     userNameOrEmail: "",
@@ -13,6 +16,19 @@ export default function LoginPage() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const parameters = new URLSearchParams(window.location.search);
+
+    if (parameters.get("reason") !== "session-ended") return;
+
+    const message =
+      "Su sesión expiró o ya no está autorizada. Ingrese nuevamente.";
+
+    setError(message);
+    showAlert(message, "warning");
+    window.history.replaceState({}, "", "/login");
+  }, []);
 
   const updateField = (field, value) => {
     setForm((current) => ({
@@ -26,12 +42,16 @@ export default function LoginPage() {
     setError("");
 
     if (!form.userNameOrEmail.trim()) {
-      setError("Ingrese su usuario o correo.");
+      const message = "Ingrese su usuario o correo.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!form.password.trim()) {
-      setError("Ingrese su contraseña.");
+      const message = "Ingrese su contraseña.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
@@ -49,10 +69,12 @@ export default function LoginPage() {
         replace: true,
       });
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
+      const message = getApiErrorMessage(
+        err,
         "No se pudo iniciar sesión."
       );
+      setError(message);
+      showAlert(message, "error");
     } finally {
       setLoading(false);
     }

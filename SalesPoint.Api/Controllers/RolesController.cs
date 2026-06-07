@@ -28,4 +28,11 @@ public class RolesController : ControllerBase
     {
         return Ok(await _service.CreateAsync(request));
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateRoleRequest request)
+    {
+        await _service.UpdateAsync(id, request);
+        return Ok(new { message = "Rol actualizado correctamente." });
+    }
 }

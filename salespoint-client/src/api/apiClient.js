@@ -20,6 +20,19 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       clearAuthSession();
+
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login?reason=session-ended");
+      }
+    }
+
+    if (
+      error.response?.status === 403 &&
+      !error.response.data?.message
+    ) {
+      error.response.data = {
+        message: "No tiene permisos para realizar esta operación.",
+      };
     }
 
     return Promise.reject(error);

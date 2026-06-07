@@ -6,6 +6,8 @@ import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import Pagination from "../components/Pagination";
 import { getInvoices, reconstructInvoiceByNumber } from "../api/invoiceApi";
+import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "../components/AppAlert";
 
 const PAGE_SIZE = 8;
 
@@ -75,6 +77,7 @@ const getNumber = (...values) => {
 
 export default function InvoiceHistoryPage() {
   const navigate = useNavigate();
+  const { showAlert } = useAppAlert();
 
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -104,7 +107,10 @@ export default function InvoiceHistoryPage() {
       setSelectedIndex(0);
     } catch (error) {
       console.error("Error cargando facturas:", error);
-      alert("No se pudo cargar el historial de facturas.");
+      showAlert(
+        getApiErrorMessage(error, "No se pudo cargar el historial de facturas."),
+        "error"
+      );
     }
   };
 
@@ -244,7 +250,7 @@ export default function InvoiceHistoryPage() {
     const cleanNumber = invoiceNumber?.trim().toUpperCase();
 
     if (!cleanNumber) {
-      alert("Ingrese el número de factura para auditoría.");
+      showAlert("Ingrese el número de factura para auditoría.", "warning");
       auditInputRef.current?.focus();
       return;
     }
@@ -257,9 +263,16 @@ export default function InvoiceHistoryPage() {
 
       setSelectedInvoice(mappedInvoice);
       setShowPreview(true);
+      showAlert(
+        `Factura ${mappedInvoice.invoiceNumber} reconstruida correctamente.`,
+        "success"
+      );
     } catch (error) {
       console.error("Error reconstruyendo factura:", error);
-      alert("No se pudo reconstruir la factura con ese número.");
+      showAlert(
+        getApiErrorMessage(error, "No se pudo reconstruir la factura."),
+        "error"
+      );
     }
   };
 

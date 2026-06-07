@@ -9,6 +9,10 @@ public sealed class ErrorLog : BaseEntity
     public string Message { get; private set; } = string.Empty;
     public string Detail { get; private set; } = string.Empty;
     public string? StackTrace { get; private set; }
+    public string ExceptionType { get; private set; } = string.Empty;
+    public int? UserId { get; private set; }
+    public string HttpMethod { get; private set; } = string.Empty;
+    public string Path { get; private set; } = string.Empty;
     public DateTime CreatedAt { get; private set; }
     public DateTime Date => CreatedAt;
 
@@ -17,12 +21,20 @@ public sealed class ErrorLog : BaseEntity
     public ErrorLog(
         string source,
         string message,
-        string? detail = null)
+        string? detail = null,
+        string? exceptionType = null,
+        int? userId = null,
+        string? httpMethod = null,
+        string? path = null)
     {
         SetSource(source);
         SetMessage(message);
         SetDetail(detail);
         SetStackTrace(detail);
+        ExceptionType = Limit(exceptionType, 200);
+        UserId = userId;
+        HttpMethod = Limit(httpMethod, 10).ToUpperInvariant();
+        Path = Limit(path, 300);
         CreatedAt = DateTime.UtcNow;
     }
 
@@ -33,10 +45,9 @@ public sealed class ErrorLog : BaseEntity
         if (string.IsNullOrWhiteSpace(cleanSource))
             cleanSource = "UNKNOWN";
 
-        if (cleanSource.Length > 200)
-            throw new DomainException("El origen del error no puede superar los 200 caracteres.");
-
-        Source = cleanSource;
+        Source = cleanSource.Length > 120
+            ? cleanSource[..120]
+            : cleanSource;
     }
 
     public void SetMessage(string message)
@@ -44,7 +55,10 @@ public sealed class ErrorLog : BaseEntity
         if (string.IsNullOrWhiteSpace(message))
             throw new DomainException("El mensaje del error es obligatorio.");
 
-        Message = message.Trim();
+        var cleanMessage = message.Trim();
+        Message = cleanMessage.Length > 1000
+            ? cleanMessage[..1000]
+            : cleanMessage;
     }
 
     public void SetDetail(string? detail)
@@ -55,5 +69,13 @@ public sealed class ErrorLog : BaseEntity
     public void SetStackTrace(string? stackTrace)
     {
         StackTrace = stackTrace?.Trim();
+    }
+
+    private static string Limit(string? value, int maxLength)
+    {
+        var cleanValue = value?.Trim() ?? string.Empty;
+        return cleanValue.Length > maxLength
+            ? cleanValue[..maxLength]
+            : cleanValue;
     }
 }

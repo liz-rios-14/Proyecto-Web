@@ -13,6 +13,8 @@ public sealed class User : BaseEntity
     public string Email { get; private set; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
     public bool IsActive { get; private set; } = true;
+    public int FailedLoginAttempts { get; private set; }
+    public bool IsLocked { get; private set; }
 
     public string? PasswordResetTokenHash { get; private set; }
     public DateTime? PasswordResetTokenExpiresAt { get; private set; }
@@ -29,6 +31,8 @@ public sealed class User : BaseEntity
         SetEmail(email);
         SetPasswordHash(passwordHash);
         IsActive = true;
+        FailedLoginAttempts = 0;
+        IsLocked = false;
     }
 
     public User(string userName, string email, string passwordHash, int roleId)
@@ -111,10 +115,15 @@ public sealed class User : BaseEntity
         PasswordResetTokenExpiresAt = null;
     }
 
-    public void Update(string userName, string email, int roleId, bool isActive)
+    public void Update(
+        string fullName,
+        string userName,
+        string email,
+        int roleId,
+        bool isActive)
     {
         SetUserName(userName);
-        SetFullName(userName);
+        SetFullName(fullName);
         SetEmail(email);
         SetRole(roleId);
         IsActive = isActive;
@@ -142,5 +151,27 @@ public sealed class User : BaseEntity
     public void Disable()
     {
         Deactivate();
+    }
+
+    public void RegisterFailedLoginAttempt()
+    {
+        if (IsLocked)
+            return;
+
+        FailedLoginAttempts++;
+
+        if (FailedLoginAttempts >= 3)
+            IsLocked = true;
+    }
+
+    public void ResetFailedLoginAttempts()
+    {
+        FailedLoginAttempts = 0;
+    }
+
+    public void Unlock()
+    {
+        IsLocked = false;
+        FailedLoginAttempts = 0;
     }
 }

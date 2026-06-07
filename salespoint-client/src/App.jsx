@@ -7,6 +7,9 @@ import InvoiceHistoryPage from "./pages/InvoiceHistoryPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import UserManagerPage from "./pages/UserManagerPage";
+import RoleManagerPage from "./pages/RoleManagerPage";
+import ErrorLogPage from "./pages/ErrorLogPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -29,7 +32,7 @@ export default function App() {
         <Route
           path="/customers"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
               <CustomerManagerPage />
             </ProtectedRoute>
           }
@@ -38,7 +41,7 @@ export default function App() {
         <Route
           path="/products"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
               <ProductManagerPage />
             </ProtectedRoute>
           }
@@ -58,6 +61,33 @@ export default function App() {
           element={
             <ProtectedRoute>
               <InvoiceHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
+              <UserManagerPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/roles"
+          element={
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
+              <RoleManagerPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/error-logs"
+          element={
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
+              <ErrorLogPage />
             </ProtectedRoute>
           }
         />

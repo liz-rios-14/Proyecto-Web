@@ -4,6 +4,8 @@ import DataTable from "../components/DataTable";
 import Pagination from "../components/Pagination";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
+import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "../components/AppAlert";
 
 const emptyProductForm = {
   name: "",
@@ -26,6 +28,7 @@ const productSearchFields = [
 ];
 
 export default function ProductManagerPage() {
+  const { showAlert, showConfirm } = useAppAlert();
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(emptyProductForm);
   const [editingId, setEditingId] = useState(null);
@@ -134,39 +137,91 @@ export default function ProductManagerPage() {
     };
 
     if (!request.name || form.price === "" || form.stock === "") {
-      alert("Complete todos los campos.");
+      showAlert("Complete todos los campos.", "warning");
       return;
     }
 
     if (request.name.length < 2) {
-      alert("El nombre del producto debe tener al menos 2 caracteres.");
+      showAlert(
+        "El nombre del producto debe tener al menos 2 caracteres.",
+        "warning"
+      );
+      return;
+    }
+
+    if (request.name.length > 80) {
+      showAlert(
+        "El nombre del producto no puede superar los 80 caracteres.",
+        "warning"
+      );
       return;
     }
 
     if (Number.isNaN(request.price) || request.price <= 0) {
-      alert("El precio debe ser mayor a cero.");
+      showAlert("El precio debe ser mayor a cero.", "warning");
+      return;
+    }
+
+    if (request.price > 999999.99) {
+      showAlert("El precio ingresado es demasiado alto.", "warning");
       return;
     }
 
     if (!Number.isInteger(request.stock) || request.stock < 0) {
-      alert("El stock debe ser un número entero mayor o igual a cero.");
+      showAlert(
+        "El stock debe ser un número entero mayor o igual a cero.",
+        "warning"
+      );
+      return;
+    }
+
+    if (request.stock > 999999) {
+      showAlert("El stock ingresado es demasiado alto.", "warning");
       return;
     }
 
     try {
+      const duplicateResponse = await api.get("/products/search", {
+        params: {
+          field: "name",
+          value: request.name,
+          pageNumber: 1,
+          pageSize: 10,
+        },
+      });
+
+      const duplicateProduct = (duplicateResponse.data.items ?? []).find(
+        (product) =>
+          product.name?.trim().toUpperCase() === request.name &&
+          product.id !== editingId
+      );
+
+      if (duplicateProduct) {
+        showAlert(
+          editingId
+            ? "Ya existe otro producto con el mismo nombre."
+            : "Ya existe un producto con el mismo nombre.",
+          "warning"
+        );
+        return;
+      }
+
       if (editingId) {
         await api.put(`/products/${editingId}`, request);
-        alert("Producto actualizado correctamente.");
+        showAlert("Producto actualizado correctamente.", "success");
       } else {
         await api.post("/products", request);
-        alert("Producto creado correctamente.");
+        showAlert("Producto creado correctamente.", "success");
       }
 
       resetForm();
       loadProducts(page);
     } catch (error) {
       console.error(error);
-      alert("No se pudo guardar el producto.");
+      showAlert(
+        getApiErrorMessage(error, "No se pudo guardar el producto."),
+        "error"
+      );
     }
   };
 
@@ -181,15 +236,26 @@ export default function ProductManagerPage() {
   };
 
   const deleteProduct = async (id) => {
-    if (!confirm("¿Seguro que desea eliminar este producto?")) return;
+    const confirmed = await showConfirm(
+      "¿Seguro que desea eliminar este producto?",
+      {
+        title: "Eliminar producto",
+        confirmText: "Sí, eliminar",
+      }
+    );
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/products/${id}`);
-      alert("Producto eliminado correctamente.");
+      showAlert("Producto eliminado correctamente.", "success");
       loadProducts(page);
     } catch (error) {
       console.error(error);
-      alert("No se pudo eliminar el producto.");
+      showAlert(
+        getApiErrorMessage(error, "No se pudo eliminar el producto."),
+        "error"
+      );
     }
   };
 

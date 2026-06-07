@@ -16,6 +16,31 @@ public sealed class LoginResponseDto
     public DateTime Expiration { get; set; }
 }
 
+public sealed class LoginResultDto
+{
+    public bool IsSuccess { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public LoginResponseDto? Data { get; set; }
+
+    public static LoginResultDto Success(LoginResponseDto data)
+    {
+        return new LoginResultDto
+        {
+            IsSuccess = true,
+            Data = data
+        };
+    }
+
+    public static LoginResultDto Failure(string message)
+    {
+        return new LoginResultDto
+        {
+            IsSuccess = false,
+            Message = message
+        };
+    }
+}
+
 public sealed class ForgotPasswordRequestDto
 {
     public string Email { get; set; } = string.Empty;

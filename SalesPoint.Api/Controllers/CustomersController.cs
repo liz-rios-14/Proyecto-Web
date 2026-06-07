@@ -34,7 +34,7 @@ public class CustomersController : ControllerBase
         var result = await _service.GetByIdAsync(id);
 
         if (result is null)
-            return NotFound("Cliente no encontrado.");
+            return NotFound(new { message = "Cliente no encontrado." });
 
         return Ok(result);
     }
@@ -47,16 +47,18 @@ public class CustomersController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateCustomerRequest request)
     {
         await _service.UpdateAsync(id, request);
-        return Ok("Cliente actualizado correctamente.");
+        return Ok(new { message = "Cliente actualizado correctamente." });
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Delete(int id)
     {
         await _service.DeleteAsync(id);
-        return Ok("Cliente eliminado correctamente.");
+        return Ok(new { message = "Cliente eliminado correctamente." });
     }
 }

@@ -91,7 +91,7 @@ public sealed class ProductRepository : IProductRepository
     {
         var query = _context.Products
             .AsNoTracking()
-            .Where(product => product.Stock > 0)
+            .Where(product => product.IsActive && product.Stock > 0)
             .AsQueryable();
 
         if (string.IsNullOrWhiteSpace(field) || string.IsNullOrWhiteSpace(value))

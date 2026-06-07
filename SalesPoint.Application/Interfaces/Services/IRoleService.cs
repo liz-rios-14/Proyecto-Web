@@ -4,4 +4,5 @@ public interface IRoleService
 {
     Task<List<RoleDto>> GetAllAsync();
     Task<RoleDto> CreateAsync(CreateRoleRequest request);
+    Task UpdateAsync(int id, UpdateRoleRequest request);
 }

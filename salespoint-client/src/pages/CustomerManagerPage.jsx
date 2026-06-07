@@ -4,6 +4,8 @@ import DataTable from "../components/DataTable";
 import Pagination from "../components/Pagination";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
+import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "../components/AppAlert";
 
 const emptyCustomerForm = {
   firstName: "",
@@ -32,6 +34,7 @@ const customerSearchFields = [
 ];
 
 export default function CustomerManagerPage() {
+  const { showAlert, showConfirm } = useAppAlert();
   const [customers, setCustomers] = useState([]);
   const [form, setForm] = useState(emptyCustomerForm);
   const [editingId, setEditingId] = useState(null);
@@ -138,44 +141,87 @@ export default function CustomerManagerPage() {
     };
 
     if (!request.firstName || !request.lastName || !request.phone || !request.address || !request.email) {
-      alert("Complete todos los campos.");
+      showAlert("Complete todos los campos.", "warning");
+      return;
+    }
+
+    if (request.firstName.length < 2 || request.firstName.length > 40) {
+      showAlert("El nombre debe tener entre 2 y 40 caracteres.", "warning");
+      return;
+    }
+
+    if (request.lastName.length < 2 || request.lastName.length > 40) {
+      showAlert("El apellido debe tener entre 2 y 40 caracteres.", "warning");
       return;
     }
 
     if (!/^[A-ZÁÉÍÓÚÑ\s]+$/.test(request.firstName)) {
-      alert("El nombre solo debe contener letras.");
+      showAlert("El nombre solo debe contener letras.", "warning");
       return;
     }
 
     if (!/^[A-ZÁÉÍÓÚÑ\s]+$/.test(request.lastName)) {
-      alert("El apellido solo debe contener letras.");
+      showAlert("El apellido solo debe contener letras.", "warning");
       return;
     }
 
     if (!/^\d{10}$/.test(request.phone)) {
-      alert("El teléfono debe tener exactamente 10 dígitos.");
+      showAlert("El teléfono debe tener exactamente 10 dígitos.", "warning");
+      return;
+    }
+
+    if (request.address.length < 5 || request.address.length > 150) {
+      showAlert("La dirección debe tener entre 5 y 150 caracteres.", "warning");
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(request.email)) {
-      alert("Ingrese un correo válido.");
+      showAlert("Ingrese un correo válido.", "warning");
       return;
     }
 
     try {
+      const duplicateResponse = await api.get("/customers/search", {
+        params: {
+          field: "email",
+          value: request.email,
+          pageNumber: 1,
+          pageSize: 10,
+        },
+      });
+
+      const duplicateCustomer = (duplicateResponse.data.items ?? []).find(
+        (customer) =>
+          customer.email?.trim().toLowerCase() === request.email &&
+          customer.id !== editingId
+      );
+
+      if (duplicateCustomer) {
+        showAlert(
+          editingId
+            ? "Ya existe otro cliente con el mismo correo."
+            : "Ya existe un cliente con el mismo correo.",
+          "warning"
+        );
+        return;
+      }
+
       if (editingId) {
         await api.put(`/customers/${editingId}`, request);
-        alert("Cliente actualizado correctamente.");
+        showAlert("Cliente actualizado correctamente.", "success");
       } else {
         await api.post("/customers", request);
-        alert("Cliente creado correctamente.");
+        showAlert("Cliente creado correctamente.", "success");
       }
 
       resetForm();
       loadCustomers(page);
     } catch (error) {
       console.error(error);
-      alert("No se pudo guardar el cliente.");
+      showAlert(
+        getApiErrorMessage(error, "No se pudo guardar el cliente."),
+        "error"
+      );
     }
   };
 
@@ -192,15 +238,26 @@ export default function CustomerManagerPage() {
   };
 
   const deleteCustomer = async (id) => {
-    if (!confirm("¿Seguro que desea eliminar este cliente?")) return;
+    const confirmed = await showConfirm(
+      "¿Seguro que desea eliminar este cliente?",
+      {
+        title: "Eliminar cliente",
+        confirmText: "Sí, eliminar",
+      }
+    );
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/customers/${id}`);
-      alert("Cliente eliminado correctamente.");
+      showAlert("Cliente eliminado correctamente.", "success");
       loadCustomers(page);
     } catch (error) {
       console.error(error);
-      alert("No se pudo eliminar el cliente.");
+      showAlert(
+        getApiErrorMessage(error, "No se pudo eliminar el cliente."),
+        "error"
+      );
     }
   };
 

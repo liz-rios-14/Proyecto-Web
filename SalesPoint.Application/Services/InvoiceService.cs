@@ -1,6 +1,7 @@
 ﻿using SalesPoint.Application.DTOs.Common;
 using SalesPoint.Application.DTOs.Invoices;
 using SalesPoint.Application.Interfaces.Repositories;
+using SalesPoint.Application.Interfaces.Security;
 using SalesPoint.Application.Interfaces.Services;
 using SalesPoint.Domain.Entities;
 using SalesPoint.Domain.Exceptions;
@@ -12,15 +13,21 @@ public sealed class InvoiceService : IInvoiceService
     private readonly ICustomerRepository _customerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IInvoiceRepository _invoiceRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly ICurrentUserContext _currentUser;
 
     public InvoiceService(
         ICustomerRepository customerRepository,
         IProductRepository productRepository,
-        IInvoiceRepository invoiceRepository)
+        IInvoiceRepository invoiceRepository,
+        IUserRepository userRepository,
+        ICurrentUserContext currentUser)
     {
         _customerRepository = customerRepository;
         _productRepository = productRepository;
         _invoiceRepository = invoiceRepository;
+        _userRepository = userRepository;
+        _currentUser = currentUser;
     }
 
     public async Task<InvoiceDto> CreateAsync(CreateInvoiceRequest request)
@@ -30,6 +37,9 @@ public sealed class InvoiceService : IInvoiceService
 
         if (request.Details is null || !request.Details.Any())
             throw new DomainException("La factura debe tener al menos un producto.");
+
+        if (request.CustomerId <= 0)
+            throw new DomainException("El cliente es obligatorio.");
 
         var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
 
@@ -53,24 +63,44 @@ public sealed class InvoiceService : IInvoiceService
             : request.CustomerAddress.Trim();
 
         var invoice = new Invoice(request.CustomerId);
+        var seller = await _userRepository.GetByIdAsync(_currentUser.UserId)
+            ?? throw new DomainException("El vendedor autenticado no existe.");
+
+        if (!seller.IsActive || seller.IsDeleted)
+            throw new DomainException("El vendedor autenticado está inactivo o eliminado.");
 
         invoice.SetAuditSnapshot(
             customerName: customerNameSnapshot,
             customerEmail: customerEmailSnapshot,
             customerPhone: customerPhoneSnapshot,
             customerAddress: customerAddressSnapshot,
-            sellerId: 1,
-            sellerUserName: "admin",
-            sellerFullName: "ADMINISTRADOR DEL SISTEMA",
-            sellerRole: "ADMINISTRATOR"
+            sellerId: seller.Id,
+            sellerUserName: seller.UserName,
+            sellerFullName: seller.FullName,
+            sellerRole: string.IsNullOrWhiteSpace(seller.Role?.Name)
+                ? _currentUser.Role
+                : seller.Role.Name
         );
 
         foreach (var detail in request.Details)
         {
+            if (detail.ProductId <= 0)
+                throw new DomainException("Todos los productos de la factura deben ser válidos.");
+
+            if (detail.Quantity <= 0)
+                throw new DomainException("La cantidad de cada producto debe ser mayor a cero.");
+
             var product = await _productRepository.GetByIdAsync(detail.ProductId);
 
             if (product is null)
-                throw new DomainException("Uno de los productos seleccionados no existe.");
+                throw new DomainException($"El producto con id {detail.ProductId} no existe.");
+
+            if (!product.IsActive)
+                throw new DomainException($"El producto {product.Name} está inactivo.");
+
+            if (detail.Quantity > product.Stock)
+                throw new InsufficientStockException(
+                    $"Stock insuficiente para {product.Name}. Disponible: {product.Stock}.");
 
             invoice.AddDetail(product, detail.Quantity);
         }
@@ -96,8 +126,12 @@ public sealed class InvoiceService : IInvoiceService
         pageNumber = pageNumber <= 0 ? 1 : pageNumber;
         pageSize = pageSize <= 0 ? 8 : pageSize;
 
-        var invoices = await _invoiceRepository.GetAllAsync(pageNumber, pageSize);
-        var totalItems = await _invoiceRepository.CountAsync();
+        var sellerId = GetSellerFilter();
+        var invoices = await _invoiceRepository.GetAllAsync(
+            pageNumber,
+            pageSize,
+            sellerId);
+        var totalItems = await _invoiceRepository.CountAsync(sellerId);
 
         var result = invoices.Select(invoice => new InvoiceHistoryDto
         {
@@ -125,7 +159,9 @@ public sealed class InvoiceService : IInvoiceService
 
     public async Task<InvoiceDto?> GetByIdAsync(int id)
     {
-        var invoice = await _invoiceRepository.GetByIdAsync(id);
+        var invoice = await _invoiceRepository.GetByIdAsync(
+            id,
+            GetSellerFilter());
 
         if (invoice is null)
             return null;
@@ -162,7 +198,9 @@ public sealed class InvoiceService : IInvoiceService
             throw new DomainException("El número de factura es obligatorio.");
 
         var invoice = await _invoiceRepository
-            .GetByInvoiceNumberForAuditAsync(invoiceNumber.Trim());
+            .GetByInvoiceNumberForAuditAsync(
+                invoiceNumber.Trim(),
+                GetSellerFilter());
 
         if (invoice is null)
             return null;
@@ -250,6 +288,16 @@ public sealed class InvoiceService : IInvoiceService
             string.Join(" ", parts.Take(2)),
             string.Join(" ", parts.Skip(2))
         );
+    }
+
+    private int? GetSellerFilter()
+    {
+        return string.Equals(
+            _currentUser.Role,
+            "ADMINISTRATOR",
+            StringComparison.OrdinalIgnoreCase)
+            ? null
+            : _currentUser.UserId;
     }
 
     private static InvoiceDto MapInvoiceToDto(Invoice invoice)

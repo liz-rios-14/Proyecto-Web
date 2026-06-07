@@ -1,11 +1,47 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import KeyboardHelp from "./KeyboardHelp";
 import ThemeToggle from "./ThemeToggle";
+import {
+  clearAuthSession,
+  getAuthUser,
+} from "../services/authStorage";
+import { useAppAlert } from "./AppAlert";
+import { getRoleLabel } from "../services/roleLabels";
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { showAlert, showConfirm } = useAppAlert();
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [closingSession, setClosingSession] = useState(false);
+  const authUser = getAuthUser();
+  const isAdministrator =
+    authUser?.roleName?.toUpperCase() === "ADMINISTRATOR";
+  const roleLabel = getRoleLabel(authUser?.roleName);
+
+  const logout = async () => {
+    if (closingSession) return;
+
+    const confirmed = await showConfirm(
+      "¿Seguro que desea cerrar la sesión actual?",
+      {
+        title: "Cerrar sesión",
+        confirmText: "Sí, cerrar sesión",
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setClosingSession(true);
+      clearAuthSession();
+      navigate("/login", { replace: true });
+      showAlert("Sesión cerrada correctamente.", "success");
+    } finally {
+      setClosingSession(false);
+    }
+  };
 
   const shortcutsByPath = {
     "/sales": [
@@ -77,20 +113,42 @@ export default function Sidebar() {
             <span>Facturación</span>
           </NavLink>
 
-          <NavLink to="/customers" className="sidebar-link">
-            <span>👥</span>
-            <span>Clientes</span>
-          </NavLink>
+          {isAdministrator && (
+            <>
+              <NavLink to="/customers" className="sidebar-link">
+                <span>👥</span>
+                <span>Clientes</span>
+              </NavLink>
 
-          <NavLink to="/products" className="sidebar-link">
-            <span>📦</span>
-            <span>Productos</span>
-          </NavLink>
+              <NavLink to="/products" className="sidebar-link">
+                <span>📦</span>
+                <span>Productos</span>
+              </NavLink>
+            </>
+          )}
 
           <NavLink to="/invoices" className="sidebar-link">
             <span>📜</span>
             <span>Historial</span>
           </NavLink>
+          {isAdministrator && (
+            <>
+              <NavLink to="/users" className="sidebar-link">
+                <span>U</span>
+                <span>Usuarios</span>
+              </NavLink>
+
+              <NavLink to="/roles" className="sidebar-link">
+                <span>R</span>
+                <span>Roles</span>
+              </NavLink>
+
+              <NavLink to="/error-logs" className="sidebar-link">
+                <span>!</span>
+                <span>Registro de errores</span>
+              </NavLink>
+            </>
+          )}
         </nav>
 
         <div className="shortcut-help-area">
@@ -111,7 +169,21 @@ export default function Sidebar() {
       </div>
 
       <div className="sidebar-bottom">
+        <div className="sidebar-user">
+          <strong>{authUser?.userName || "Usuario"}</strong>
+          <span>{roleLabel}</span>
+        </div>
+
         <ThemeToggle />
+
+        <button
+          type="button"
+          className="logout-button"
+          disabled={closingSession}
+          onClick={logout}
+        >
+          {closingSession ? "Cerrando..." : "Cerrar sesión"}
+        </button>
       </div>
     </aside>
   );

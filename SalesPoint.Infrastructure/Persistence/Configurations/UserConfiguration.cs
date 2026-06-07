@@ -28,6 +28,14 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("password_reset_token_expires_at");
 
         builder.Property(user => user.IsActive).HasColumnName("is_active").IsRequired();
+        builder.Property(user => user.FailedLoginAttempts)
+            .HasColumnName("failed_login_attempts")
+            .HasDefaultValue(0)
+            .IsRequired();
+        builder.Property(user => user.IsLocked)
+            .HasColumnName("is_locked")
+            .HasDefaultValue(false)
+            .IsRequired();
         builder.Property(user => user.IsDeleted).HasColumnName("is_deleted").IsRequired();
         builder.Property(user => user.CreatedAt).HasColumnName("created_at").IsRequired();
 
@@ -50,6 +58,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             PasswordResetTokenHash = (string?)null,
             PasswordResetTokenExpiresAt = (DateTime?)null,
             IsActive = true,
+            FailedLoginAttempts = 0,
+            IsLocked = false,
             IsDeleted = false,
             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         });

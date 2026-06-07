@@ -1,25 +1,95 @@
+using SalesPoint.Application.DTOs.Common;
 using SalesPoint.Application.DTOs.ErrorLogs;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Application.Interfaces.Services;
 using SalesPoint.Domain.Entities;
+using SalesPoint.Domain.Exceptions;
 
 namespace SalesPoint.Application.Services;
+
 public sealed class ErrorLogService : IErrorLogService
 {
+    private static readonly int[] AllowedPageSizes = [10, 15, 20, 30];
     private readonly IErrorLogRepository _repository;
-    public ErrorLogService(IErrorLogRepository repository) => _repository = repository;
-    public async Task<List<ErrorLogDto>> GetAllAsync() => (await _repository.GetAllAsync()).Select(Map).ToList();
+
+    public ErrorLogService(IErrorLogRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<List<ErrorLogDto>> GetAllAsync()
+    {
+        return (await _repository.GetAllAsync()).Select(Map).ToList();
+    }
+
     public async Task<ErrorLogDto> CreateAsync(CreateErrorLogRequest request)
     {
+        if (request is null)
+            throw new DomainException("Los datos del error son obligatorios.");
+
         var log = new ErrorLog(request.Source, request.Message, request.Detail);
         await _repository.CreateAsync(log);
         return Map(log);
     }
-    public async Task<ErrorLogDto> RegisterExceptionAsync(Exception exception, string source)
+
+    public async Task<ErrorLogDto> RegisterExceptionAsync(
+        RegisterErrorLogRequest request)
     {
-        var log = new ErrorLog(source, exception.Message, exception.ToString());
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Exception);
+
+        var log = new ErrorLog(
+            request.Source,
+            request.Exception.Message,
+            request.Exception.ToString(),
+            request.Exception.GetType().FullName,
+            request.UserId,
+            request.HttpMethod,
+            request.Path);
+
         await _repository.CreateAsync(log);
         return Map(log);
     }
-    private static ErrorLogDto Map(ErrorLog log) => new() { Id = log.Id, Source = log.Source, Message = log.Message, Detail = log.Detail, CreatedAt = log.CreatedAt };
+
+    public async Task<PagedResponse<ErrorLogDto>> SearchAsync(
+        ErrorLogQuery query)
+    {
+        query ??= new ErrorLogQuery();
+        var pageNumber = Math.Clamp(query.PageNumber, 1, 100_000);
+        var pageSize = AllowedPageSizes.Contains(query.PageSize)
+            ? query.PageSize
+            : 10;
+
+        var logs = await _repository.SearchAsync(
+            query.Field,
+            query.Value,
+            pageNumber,
+            pageSize);
+        var totalItems = await _repository.CountAsync(query.Field, query.Value);
+
+        return new PagedResponse<ErrorLogDto>
+        {
+            Items = logs.Select(Map).ToList(),
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
+        };
+    }
+
+    private static ErrorLogDto Map(ErrorLog log)
+    {
+        return new ErrorLogDto
+        {
+            Id = log.Id,
+            Source = log.Source,
+            Message = log.Message,
+            Detail = log.Detail,
+            ExceptionType = log.ExceptionType,
+            UserId = log.UserId,
+            HttpMethod = log.HttpMethod,
+            Path = log.Path,
+            CreatedAt = log.CreatedAt
+        };
+    }
 }

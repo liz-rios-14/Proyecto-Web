@@ -1,3 +1,5 @@
+import { getRoleLabel } from "../services/roleLabels";
+
 export default function InvoicePreviewModal({
   isOpen,
   invoiceNumber,
@@ -45,7 +47,7 @@ export default function InvoicePreviewModal({
       seller?.fullName || seller?.name,
       "ADMINISTRADOR DEL SISTEMA"
     ),
-    role: safeValue(seller?.role, "ADMINISTRATOR"),
+    role: getRoleLabel(safeValue(seller?.role, "ADMINISTRATOR")),
   };
 
   const buildInvoiceHtml = () => {

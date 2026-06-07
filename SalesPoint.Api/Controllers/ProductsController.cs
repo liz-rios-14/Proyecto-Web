@@ -34,12 +34,13 @@ public class ProductsController : ControllerBase
         var result = await _service.GetByIdAsync(id);
 
         if (result == null)
-            return NotFound("Producto no encontrado.");
+            return NotFound(new { message = "Producto no encontrado." });
 
         return Ok(result);
     }
 
     [HttpPost]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Create([FromBody] CreateProductRequest request)
     {
         var result = await _service.CreateAsync(request);
@@ -47,16 +48,18 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateProductRequest request)
     {
         await _service.UpdateAsync(id, request);
-        return Ok("Producto actualizado correctamente.");
+        return Ok(new { message = "Producto actualizado correctamente." });
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Delete(int id)
     {
         await _service.DeleteAsync(id);
-        return Ok("Producto eliminado correctamente.");
+        return Ok(new { message = "Producto eliminado correctamente." });
     }
 }
