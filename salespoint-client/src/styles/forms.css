@@ -1,0 +1,91 @@
+label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #0f172a;
+  text-align: left;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  outline: none;
+  margin-bottom: 12px;
+  font-size: 15px;
+  text-align: left;
+}
+
+input:focus,
+select:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+input[readonly] {
+  background: #f8fafc;
+  cursor: default;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  text-align: right;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.search-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.form-alert {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+  font-weight: 700;
+}
+
+.page-size-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.page-size-control select {
+  width: auto;
+  min-width: 90px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 800px) {
+  .form-grid,
+  .search-grid,
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}

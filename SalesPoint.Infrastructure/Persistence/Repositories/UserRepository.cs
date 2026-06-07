@@ -38,6 +38,15 @@ public sealed class UserRepository : IUserRepository
             .FirstOrDefaultAsync(user => user.UserName == cleanUserName);
     }
 
+    public async Task<User?> GetByEmailAsync(string email)
+    {
+        var cleanEmail = email.Trim().ToLowerInvariant();
+
+        return await _context.Users
+            .Include(user => user.Role)
+            .FirstOrDefaultAsync(user => user.Email == cleanEmail);
+    }
+
     public async Task<User?> GetByUserNameOrEmailAsync(string userNameOrEmail)
     {
         var cleanValue = userNameOrEmail.Trim().ToLowerInvariant();
@@ -67,6 +76,21 @@ public sealed class UserRepository : IUserRepository
             .AnyAsync(user =>
                 user.Email == cleanEmail &&
                 (!excludeId.HasValue || user.Id != excludeId.Value));
+    }
+
+    public async Task<List<string>> GetPasswordHistoryHashesAsync(int userId)
+    {
+        return await _context.PasswordHistories
+            .Where(history => history.UserId == userId)
+            .OrderByDescending(history => history.CreatedAt)
+            .Select(history => history.PasswordHash)
+            .ToListAsync();
+    }
+
+    public async Task AddPasswordHistoryAsync(PasswordHistory history)
+    {
+        await _context.PasswordHistories.AddAsync(history);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<User> CreateAsync(User user)

@@ -1,0 +1,259 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  background: #f4f7fb;
+  overflow-x: hidden;
+}
+
+.sidebar {
+  width: 230px;
+  background: #0f172a;
+  color: white;
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-shadow: 10px 0 30px rgba(15, 23, 42, 0.18);
+  overflow: visible;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.logo-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.sidebar-logo h2 {
+  color: white;
+  margin: 0;
+  font-size: 21px;
+}
+
+.sidebar-logo p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.sidebar-user {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 18px;
+}
+
+.sidebar-user strong,
+.sidebar-user span {
+  display: block;
+}
+
+.sidebar-user span {
+  margin-top: 4px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: #cbd5e1;
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 15px;
+  transition: 0.2s;
+}
+
+.sidebar-link:hover {
+  background: #1e293b;
+  color: white;
+}
+
+.sidebar-link.active {
+  background: #2563eb;
+  color: white;
+}
+
+.sidebar-bottom {
+  position: relative;
+  z-index: 20;
+}
+
+.navbar {
+  width: 100%;
+  background: #0f172a;
+  color: white;
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.25);
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+.navbar-brand {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.navbar-links a {
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.navbar-links a:hover {
+  background: #1e293b;
+  color: white;
+}
+
+.navbar-links a.active {
+  background: #2563eb;
+  color: white;
+}
+
+.shortcut-help-area {
+  position: relative;
+  margin-top: 20px;
+}
+
+.shortcut-toggle {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.shortcut-toggle:hover {
+  background: #1d4ed8;
+  transform: scale(1.05);
+}
+
+.shortcut-popover {
+  position: absolute;
+  left: 0;
+  top: 54px;
+  width: 205px;
+  max-height: 230px;
+  overflow-y: auto;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.35);
+  z-index: 9999;
+}
+
+.shortcut-popover .keyboard-help {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+}
+
+.shortcut-popover .keyboard-help-title {
+  color: #0f172a;
+}
+
+.shortcut-popover .keyboard-help p {
+  color: #334155;
+}
+
+.keyboard-help {
+  margin-top: 30px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.keyboard-help-title {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.keyboard-help p {
+  color: #cbd5e1;
+  font-size: 13px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 95px;
+    padding: 18px 10px;
+  }
+
+  .sidebar-logo h2,
+  .sidebar-logo p,
+  .sidebar-link span:last-child,
+  .sidebar-user,
+  .sidebar-footer {
+    display: none;
+  }
+
+  .sidebar-link {
+    justify-content: center;
+  }
+
+  .logo-circle {
+    margin: auto;
+  }
+}
+
+@media (max-width: 800px) {
+  .navbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

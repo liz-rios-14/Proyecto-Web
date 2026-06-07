@@ -15,3 +15,8 @@ export const getInvoiceById = async (id) => {
   const response = await api.get(`/invoices/${id}`);
   return response.data;
 };
+
+export const reconstructInvoiceByNumber = async (invoiceNumber) => {
+  const response = await api.get(`/invoices/audit/${invoiceNumber}`);
+  return response.data;
+};

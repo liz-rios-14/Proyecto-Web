@@ -33,6 +33,7 @@ export default function DataTable({
   data,
   emptyMessage = "Sin registros",
   onRowClick,
+  onRowDoubleClick,
   actions,
 }) {
   return (
@@ -63,15 +64,25 @@ export default function DataTable({
           ) : (
             data.map((item) => (
               <tr
-                key={item.id}
-                tabIndex={onRowClick ? 0 : -1}
+                key={item.id ?? item.invoiceNumber}
+                tabIndex={onRowClick || onRowDoubleClick ? 0 : -1}
                 onClick={onRowClick ? () => onRowClick(item) : undefined}
+                onDoubleClick={
+                  onRowDoubleClick ? () => onRowDoubleClick(item) : undefined
+                }
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && onRowClick) {
-                    onRowClick(item);
+                  if (event.key === "Enter") {
+                    if (onRowDoubleClick) {
+                      onRowDoubleClick(item);
+                      return;
+                    }
+
+                    if (onRowClick) {
+                      onRowClick(item);
+                    }
                   }
                 }}
-                className={`${onRowClick ? "clickable-row" : ""} ${
+                className={`${onRowClick || onRowDoubleClick ? "clickable-row" : ""} ${
                   item.isSelected ? "selected-row" : ""
                 }`}
               >

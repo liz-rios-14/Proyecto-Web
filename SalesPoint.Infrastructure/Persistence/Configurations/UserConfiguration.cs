@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SalesPoint.Domain.Entities;
 
@@ -11,13 +12,24 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable("users");
 
         builder.HasKey(user => user.Id);
+
         builder.Property(user => user.Id).HasColumnName("id");
         builder.Property(user => user.RoleId).HasColumnName("role_id").IsRequired();
         builder.Property(user => user.FullName).HasColumnName("full_name").HasMaxLength(120).IsRequired();
         builder.Property(user => user.UserName).HasColumnName("user_name").HasMaxLength(60).IsRequired();
         builder.Property(user => user.Email).HasColumnName("email").HasMaxLength(120).IsRequired();
         builder.Property(user => user.PasswordHash).HasColumnName("password_hash").HasMaxLength(250).IsRequired();
+
+        builder.Property(user => user.PasswordResetTokenHash)
+            .HasColumnName("password_reset_token_hash")
+            .HasMaxLength(250);
+
+        builder.Property(user => user.PasswordResetTokenExpiresAt)
+            .HasColumnName("password_reset_token_expires_at");
+
         builder.Property(user => user.IsActive).HasColumnName("is_active").IsRequired();
+        builder.Property(user => user.IsDeleted).HasColumnName("is_deleted").IsRequired();
+        builder.Property(user => user.CreatedAt).HasColumnName("created_at").IsRequired();
 
         builder.HasIndex(user => user.UserName).IsUnique();
         builder.HasIndex(user => user.Email).IsUnique();
@@ -35,7 +47,11 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             UserName = "admin",
             Email = "admin@salespoint.local",
             PasswordHash = "CHANGE_ME_HASH_ADMIN_123456",
-            IsActive = true
+            PasswordResetTokenHash = (string?)null,
+            PasswordResetTokenExpiresAt = (DateTime?)null,
+            IsActive = true,
+            IsDeleted = false,
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         });
     }
 }

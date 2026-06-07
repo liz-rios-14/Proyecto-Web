@@ -1,5 +1,6 @@
 import Layout from "../components/Layout";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import SearchModal from "../components/SearchModal";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
@@ -15,9 +16,22 @@ const formatDateTime = (date) => {
   )}`;
 };
 
+const toNumber = (value, defaultValue = 0) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : defaultValue;
+};
+
 export default function SalesPointPage() {
+  const location = useLocation();
+
   const [invoiceDate, setInvoiceDate] = useState(formatDateTime(new Date()));
   const [customer, setCustomer] = useState(null);
+  const [seller, setSeller] = useState({
+    userName: "admin",
+    fullName: "ADMINISTRADOR DEL SISTEMA",
+    role: "ADMINISTRATOR",
+  });
+
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState("");
   const [details, setDetails] = useState([]);
@@ -26,6 +40,9 @@ export default function SalesPointPage() {
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [createdInvoice, setCreatedInvoice] = useState(null);
 
+  const [auditSource, setAuditSource] = useState("");
+  const [auditOriginal, setAuditOriginal] = useState(null);
+
   const customerButtonRef = useRef(null);
   const productButtonRef = useRef(null);
   const addButtonRef = useRef(null);
@@ -33,21 +50,274 @@ export default function SalesPointPage() {
   const previewButtonRef = useRef(null);
   const quantityInputRef = useRef(null);
 
+  const isAuditReconstruction = Boolean(auditSource);
+
   useEffect(() => {
+    if (isAuditReconstruction) return;
+
     const timer = setInterval(() => {
       setInvoiceDate(formatDateTime(new Date()));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isAuditReconstruction]);
+
+  useEffect(() => {
+    const reconstructedInvoice = location.state?.reconstructedInvoice;
+
+    if (!reconstructedInvoice) return;
+
+    const reconstructedCustomer = {
+      id:
+        reconstructedInvoice.customer?.id ||
+        reconstructedInvoice.customer?.customerId ||
+        reconstructedInvoice.customerId ||
+        0,
+      firstName:
+        reconstructedInvoice.customer?.firstName ||
+        reconstructedInvoice.customer?.name ||
+        reconstructedInvoice.customerName ||
+        "",
+      lastName:
+        reconstructedInvoice.customer?.lastName ||
+        reconstructedInvoice.customerLastName ||
+        "",
+      phone:
+        reconstructedInvoice.customer?.phone ||
+        reconstructedInvoice.customerPhone ||
+        "",
+      address:
+        reconstructedInvoice.customer?.address ||
+        reconstructedInvoice.customerAddress ||
+        "Dato reconstruido por auditoría",
+      email:
+        reconstructedInvoice.customer?.email ||
+        reconstructedInvoice.customerEmail ||
+        "",
+    };
+
+    const reconstructedSeller = {
+      userName:
+        reconstructedInvoice.seller?.userName ||
+        reconstructedInvoice.seller?.username ||
+        reconstructedInvoice.sellerUserName ||
+        "admin",
+      fullName:
+        reconstructedInvoice.seller?.fullName ||
+        reconstructedInvoice.seller?.name ||
+        reconstructedInvoice.sellerName ||
+        "ADMINISTRADOR DEL SISTEMA",
+      role:
+        reconstructedInvoice.seller?.role ||
+        reconstructedInvoice.sellerRole ||
+        "ADMINISTRATOR",
+    };
+
+    const reconstructedDetails = (reconstructedInvoice.details ?? []).map(
+      (item) => {
+        const price = toNumber(item.price ?? item.unitPrice ?? item.appliedPrice);
+        const quantityValue = toNumber(item.quantity, 1);
+        const subtotalValue =
+          toNumber(item.subtotal) || Number((price * quantityValue).toFixed(2));
+
+        return {
+          id: item.id || item.productId,
+          name: item.name || item.productName || item.description || "",
+          price,
+          stock: toNumber(item.stock, quantityValue),
+          quantity: quantityValue,
+          subtotal: subtotalValue,
+        };
+      }
+    );
+
+    const reconstructedSubtotal =
+      toNumber(reconstructedInvoice.subtotal) ||
+      reconstructedDetails.reduce((sum, item) => sum + toNumber(item.subtotal), 0);
+
+    const reconstructedIva =
+      toNumber(reconstructedInvoice.tax ?? reconstructedInvoice.iva) ||
+      Number((reconstructedSubtotal * 0.12).toFixed(2));
+
+    const reconstructedTotal =
+      toNumber(reconstructedInvoice.total) ||
+      Number((reconstructedSubtotal + reconstructedIva).toFixed(2));
+
+    setInvoiceDate(
+      reconstructedInvoice.invoiceDate ||
+        reconstructedInvoice.date ||
+        reconstructedInvoice.createdAt ||
+        formatDateTime(new Date())
+    );
+
+    setCustomer(reconstructedCustomer);
+    setSeller(reconstructedSeller);
+    setDetails(reconstructedDetails);
+    setCreatedInvoice(null);
+    setProduct(null);
+    setQuantity("");
+    setAuditSource(reconstructedInvoice.invoiceNumber || "");
+
+    setAuditOriginal({
+      invoiceNumber: reconstructedInvoice.invoiceNumber || "",
+      invoiceDate:
+        reconstructedInvoice.invoiceDate ||
+        reconstructedInvoice.date ||
+        reconstructedInvoice.createdAt ||
+        "",
+      customer: reconstructedCustomer,
+      seller: reconstructedSeller,
+      details: reconstructedDetails,
+      subtotal: reconstructedSubtotal,
+      iva: reconstructedIva,
+      total: reconstructedTotal,
+    });
+
+    setShowInvoicePreview(false);
+  }, [location.state]);
 
   const subtotal = useMemo(
-    () => details.reduce((sum, item) => sum + item.subtotal, 0),
+    () => details.reduce((sum, item) => sum + toNumber(item.subtotal), 0),
     [details]
   );
 
   const iva = Number((subtotal * 0.12).toFixed(2));
   const total = Number((subtotal + iva).toFixed(2));
+
+  const updateCustomerField = (field, value) => {
+    setCustomer((currentCustomer) => ({
+      id: currentCustomer?.id || 0,
+      firstName: currentCustomer?.firstName || "",
+      lastName: currentCustomer?.lastName || "",
+      phone: currentCustomer?.phone || "",
+      address: currentCustomer?.address || "",
+      email: currentCustomer?.email || "",
+      ...currentCustomer,
+      [field]: value,
+    }));
+
+    setCreatedInvoice(null);
+  };
+
+  const auditComparison = useMemo(() => {
+    if (!auditOriginal) return [];
+
+    const changes = [];
+
+    const originalCustomerName = `${auditOriginal.customer.firstName} ${auditOriginal.customer.lastName}`.trim();
+    const currentCustomerName = `${customer?.firstName ?? ""} ${
+      customer?.lastName ?? ""
+    }`.trim();
+
+    if (originalCustomerName !== currentCustomerName) {
+      changes.push({
+        label: "Cliente",
+        original: originalCustomerName || "Sin dato",
+        current: currentCustomerName || "Sin dato",
+      });
+    }
+
+    if ((auditOriginal.customer.phone || "") !== (customer?.phone || "")) {
+      changes.push({
+        label: "Teléfono",
+        original: auditOriginal.customer.phone || "Sin dato",
+        current: customer?.phone || "Sin dato",
+      });
+    }
+
+    if ((auditOriginal.customer.address || "") !== (customer?.address || "")) {
+      changes.push({
+        label: "Dirección",
+        original: auditOriginal.customer.address || "Sin dato",
+        current: customer?.address || "Sin dato",
+      });
+    }
+
+    if ((auditOriginal.customer.email || "") !== (customer?.email || "")) {
+      changes.push({
+        label: "Correo",
+        original: auditOriginal.customer.email || "Sin dato",
+        current: customer?.email || "Sin dato",
+      });
+    }
+
+    auditOriginal.details.forEach((originalItem) => {
+      const currentItem = details.find((item) => item.id === originalItem.id);
+
+      if (!currentItem) {
+        changes.push({
+          label: `Producto ${originalItem.name}`,
+          original: "Existía",
+          current: "Eliminado",
+        });
+        return;
+      }
+
+      if (toNumber(originalItem.quantity) !== toNumber(currentItem.quantity)) {
+        changes.push({
+          label: `Cantidad ${originalItem.name}`,
+          original: String(originalItem.quantity),
+          current: String(currentItem.quantity),
+        });
+      }
+
+      if (toNumber(originalItem.price) !== toNumber(currentItem.price)) {
+        changes.push({
+          label: `Precio ${originalItem.name}`,
+          original: `$${toNumber(originalItem.price).toFixed(2)}`,
+          current: `$${toNumber(currentItem.price).toFixed(2)}`,
+        });
+      }
+
+      if (toNumber(originalItem.subtotal).toFixed(2) !== toNumber(currentItem.subtotal).toFixed(2)) {
+        changes.push({
+          label: `Subtotal ${originalItem.name}`,
+          original: `$${toNumber(originalItem.subtotal).toFixed(2)}`,
+          current: `$${toNumber(currentItem.subtotal).toFixed(2)}`,
+        });
+      }
+    });
+
+    details.forEach((currentItem) => {
+      const exists = auditOriginal.details.some(
+        (item) => item.id === currentItem.id
+      );
+
+      if (!exists) {
+        changes.push({
+          label: "Producto agregado",
+          original: "No existía",
+          current: `${currentItem.name} x ${currentItem.quantity}`,
+        });
+      }
+    });
+
+    if (toNumber(auditOriginal.subtotal).toFixed(2) !== subtotal.toFixed(2)) {
+      changes.push({
+        label: "Subtotal",
+        original: `$${toNumber(auditOriginal.subtotal).toFixed(2)}`,
+        current: `$${subtotal.toFixed(2)}`,
+      });
+    }
+
+    if (toNumber(auditOriginal.iva).toFixed(2) !== iva.toFixed(2)) {
+      changes.push({
+        label: "IVA",
+        original: `$${toNumber(auditOriginal.iva).toFixed(2)}`,
+        current: `$${iva.toFixed(2)}`,
+      });
+    }
+
+    if (toNumber(auditOriginal.total).toFixed(2) !== total.toFixed(2)) {
+      changes.push({
+        label: "Total",
+        original: `$${toNumber(auditOriginal.total).toFixed(2)}`,
+        current: `$${total.toFixed(2)}`,
+      });
+    }
+
+    return changes;
+  }, [auditOriginal, customer, details, subtotal, iva, total]);
 
   const handleQuantityChange = (event) => {
     const value = event.target.value;
@@ -72,8 +342,8 @@ export default function SalesPointPage() {
       params.field = field;
       params.value = value.trim();
     }
-    const response = await api.get("/customers/search", { params });
 
+    const response = await api.get("/customers/search", { params });
     return response.data;
   };
 
@@ -87,8 +357,8 @@ export default function SalesPointPage() {
       params.field = field;
       params.value = value.trim();
     }
-    const response = await api.get("/products/search", { params });
 
+    const response = await api.get("/products/search", { params });
     return response.data;
   };
 
@@ -108,7 +378,7 @@ export default function SalesPointPage() {
     const currentQuantity = existingDetail ? Number(existingDetail.quantity) : 0;
     const finalQuantity = currentQuantity + requestedQuantity;
 
-    if (finalQuantity > product.stock) {
+    if (finalQuantity > Number(product.stock)) {
       alert("La cantidad no puede superar el stock disponible.");
       return;
     }
@@ -118,10 +388,10 @@ export default function SalesPointPage() {
         details.map((item) =>
           item.id === product.id
             ? {
-              ...item,
-              quantity: finalQuantity,
-              subtotal: item.price * finalQuantity,
-            }
+                ...item,
+                quantity: finalQuantity,
+                subtotal: Number((Number(item.price) * finalQuantity).toFixed(2)),
+              }
             : item
         )
       );
@@ -134,7 +404,7 @@ export default function SalesPointPage() {
           price: Number(product.price),
           stock: Number(product.stock),
           quantity: requestedQuantity,
-          subtotal: Number(product.price) * requestedQuantity,
+          subtotal: Number((Number(product.price) * requestedQuantity).toFixed(2)),
         },
       ]);
     }
@@ -166,7 +436,7 @@ export default function SalesPointPage() {
           return item;
         }
 
-        if (newQuantity > item.stock) {
+        if (newQuantity > Number(item.stock)) {
           alert("No puede superar el stock disponible.");
           return item;
         }
@@ -174,7 +444,7 @@ export default function SalesPointPage() {
         return {
           ...item,
           quantity: newQuantity,
-          subtotal: item.price * newQuantity,
+          subtotal: Number((Number(item.price) * newQuantity).toFixed(2)),
         };
       })
     );
@@ -189,11 +459,19 @@ export default function SalesPointPage() {
 
   const cleanInvoice = () => {
     setCustomer(null);
+    setSeller({
+      userName: "admin",
+      fullName: "ADMINISTRADOR DEL SISTEMA",
+      role: "ADMINISTRATOR",
+    });
     setProduct(null);
     setQuantity("");
     setDetails([]);
     setCreatedInvoice(null);
     setShowInvoicePreview(false);
+    setAuditSource("");
+    setAuditOriginal(null);
+    setInvoiceDate(formatDateTime(new Date()));
   };
 
   const closeAllModals = () => {
@@ -204,7 +482,12 @@ export default function SalesPointPage() {
 
   const openPreview = () => {
     if (!customer) {
-      alert("Seleccione un cliente.");
+      alert("Seleccione o complete el cliente.");
+      return;
+    }
+
+    if (!customer.firstName && !customer.lastName) {
+      alert("Ingrese el nombre o apellido del cliente.");
       return;
     }
 
@@ -226,9 +509,7 @@ export default function SalesPointPage() {
   };
 
   const finishInvoice = async () => {
-    if (createdInvoice?.invoiceNumber) {
-      return;
-    }
+    if (createdInvoice?.invoiceNumber) return;
 
     if (!customer) {
       alert("Seleccione un cliente.");
@@ -240,8 +521,19 @@ export default function SalesPointPage() {
       return;
     }
 
+    if (!customer.id || Number(customer.id) <= 0) {
+      alert(
+        "El cliente reconstruido no tiene ID válido. Seleccione nuevamente el cliente antes de facturar."
+      );
+      return;
+    }
+
     const request = {
-      customerId: customer.id,
+      customerId: Number(customer.id),
+      customerName: `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim(),
+      customerEmail: customer?.email ?? "",
+      customerPhone: customer?.phone ?? "",
+      customerAddress: customer?.address ?? "",
       details: details.map((item) => ({
         productId: item.id,
         quantity: Number(item.quantity),
@@ -256,71 +548,30 @@ export default function SalesPointPage() {
       setDetails((currentDetails) =>
         currentDetails.map((item) => ({
           ...item,
-          stock: item.stock - item.quantity,
+          stock: Number(item.stock) - Number(item.quantity),
         }))
       );
     } catch (error) {
       console.error(error);
-      alert("No se pudo registrar la factura. Revise el stock disponible. Seleccione otro producto, por favor.");
+      alert(
+        "No se pudo registrar la factura. Revise el stock disponible o seleccione otro producto."
+      );
     }
   };
 
   useKeyboardShortcuts(
     [
-      {
-        ctrl: true,
-        key: "c",
-        action: () => setShowCustomerModal(true),
-      },
-      {
-        ctrl: true,
-        key: "b",
-        action: () => setShowProductModal(true),
-      },
-      {
-        ctrl: true,
-        key: "g",
-        action: openPreview,
-      },
-      {
-        ctrl: true,
-        key: "l",
-        action: cleanInvoice,
-      },
-      {
-        alt: true,
-        key: "c",
-        action: () => customerButtonRef.current?.focus(),
-      },
-      {
-        alt: true,
-        key: "b",
-        action: () => productButtonRef.current?.focus(),
-      },
-      {
-        alt: true,
-        key: "a",
-        action: () => addButtonRef.current?.focus(),
-      },
-      {
-        alt: true,
-        key: "q",
-        action: () => quantityInputRef.current?.focus(),
-      },
-      {
-        alt: true,
-        key: "g",
-        action: () => previewButtonRef.current?.focus(),
-      },
-      {
-        alt: true,
-        key: "l",
-        action: () => cleanButtonRef.current?.focus(),
-      },
-      {
-        key: "escape",
-        action: closeAllModals,
-      },
+      { ctrl: true, key: "c", action: () => setShowCustomerModal(true) },
+      { ctrl: true, key: "b", action: () => setShowProductModal(true) },
+      { ctrl: true, key: "g", action: openPreview },
+      { ctrl: true, key: "l", action: cleanInvoice },
+      { alt: true, key: "c", action: () => customerButtonRef.current?.focus() },
+      { alt: true, key: "b", action: () => productButtonRef.current?.focus() },
+      { alt: true, key: "a", action: () => addButtonRef.current?.focus() },
+      { alt: true, key: "q", action: () => quantityInputRef.current?.focus() },
+      { alt: true, key: "g", action: () => previewButtonRef.current?.focus() },
+      { alt: true, key: "l", action: () => cleanButtonRef.current?.focus() },
+      { key: "escape", action: closeAllModals },
     ],
     [customer, product, quantity, details]
   );
@@ -328,6 +579,17 @@ export default function SalesPointPage() {
   return (
     <Layout>
       <h1>Crear Factura</h1>
+
+      {auditSource && (
+        <div className="card">
+          <h2>Venta reconstruida por auditoría</h2>
+          <p>
+            Esta venta fue cargada desde la factura{" "}
+            <strong>{auditSource}</strong>. Puede editar los campos antes de
+            generar la nueva factura. La venta original no será modificada.
+          </p>
+        </div>
+      )}
 
       <div className="card invoice-header-card">
         <div className="invoice-header-grid">
@@ -350,12 +612,47 @@ export default function SalesPointPage() {
         <h2>Cliente</h2>
 
         <div className="form-grid">
-          <input value={customer?.id || ""} placeholder="Id" readOnly />
-          <input value={customer?.firstName || ""} placeholder="Nombre" readOnly />
-          <input value={customer?.lastName || ""} placeholder="Apellido" readOnly />
-          <input value={customer?.phone || ""} placeholder="Teléfono" readOnly />
-          <input value={customer?.address || ""} placeholder="Dirección" readOnly />
-          <input value={customer?.email || ""} placeholder="Correo" readOnly />
+          <input
+            value={customer?.id || ""}
+            placeholder="Id"
+            readOnly
+          />
+
+          <input
+            value={customer?.firstName || ""}
+            placeholder="Nombre"
+            onChange={(event) =>
+              updateCustomerField("firstName", event.target.value)
+            }
+          />
+
+          <input
+            value={customer?.lastName || ""}
+            placeholder="Apellido"
+            onChange={(event) =>
+              updateCustomerField("lastName", event.target.value)
+            }
+          />
+
+          <input
+            value={customer?.phone || ""}
+            placeholder="Teléfono"
+            onChange={(event) => updateCustomerField("phone", event.target.value)}
+          />
+
+          <input
+            value={customer?.address || ""}
+            placeholder="Dirección"
+            onChange={(event) =>
+              updateCustomerField("address", event.target.value)
+            }
+          />
+
+          <input
+            value={customer?.email || ""}
+            placeholder="Correo"
+            onChange={(event) => updateCustomerField("email", event.target.value)}
+          />
         </div>
 
         <button
@@ -368,10 +665,38 @@ export default function SalesPointPage() {
       </div>
 
       <div className="card">
+        <h2>Vendedor</h2>
+
+        <div className="form-grid">
+          <input
+            value={seller?.userName || ""}
+            placeholder="Usuario vendedor"
+            readOnly
+          />
+
+          <input
+            value={seller?.fullName || ""}
+            placeholder="Nombre vendedor"
+            readOnly
+          />
+
+          <input
+            value={seller?.role || ""}
+            placeholder="Rol"
+            readOnly
+          />
+        </div>
+      </div>
+
+      <div className="card">
         <h2>Producto</h2>
 
         <div className="product-grid">
-          <input value={product?.name || ""} placeholder="Nombre producto" readOnly />
+          <input
+            value={product?.name || ""}
+            placeholder="Nombre producto"
+            readOnly
+          />
 
           <input
             ref={quantityInputRef}
@@ -412,7 +737,7 @@ export default function SalesPointPage() {
             <tr>
               <th className="number-cell">Id</th>
               <th>Producto</th>
-              <th className="number-cell">Precio</th>
+              <th className="number-cell">Precio aplicado</th>
               <th className="number-cell">Cantidad</th>
               <th className="number-cell">Stock</th>
               <th className="number-cell">Subtotal</th>
@@ -564,10 +889,12 @@ export default function SalesPointPage() {
         invoiceNumber={createdInvoice?.invoiceNumber}
         invoiceDate={invoiceDate}
         customer={customer}
+        seller={seller}
         details={details}
         subtotal={subtotal}
         iva={iva}
         total={total}
+        auditComparison={auditComparison}
         onBack={() => {
           if (createdInvoice?.invoiceNumber) {
             cleanInvoice();

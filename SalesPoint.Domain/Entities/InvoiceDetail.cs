@@ -8,7 +8,8 @@ public class InvoiceDetail
     public string ProductName { get; private set; } = string.Empty;
     public decimal Price { get; private set; }
     public int Quantity { get; private set; }
-    public decimal Subtotal => Price * Quantity;
+
+    public decimal Subtotal => decimal.Round(Price * Quantity, 2);
 
     private InvoiceDetail()
     {
@@ -29,8 +30,8 @@ public class InvoiceDetail
             throw new DomainException("La cantidad debe ser mayor a cero.");
 
         ProductId = productId;
-        ProductName = productName.Trim();
-        Price = price;
+        ProductName = productName.Trim().ToUpperInvariant();
+        Price = decimal.Round(price, 2);
         Quantity = quantity;
     }
 }

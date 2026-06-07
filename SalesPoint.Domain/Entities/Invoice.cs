@@ -14,6 +14,16 @@ public class Invoice : BaseEntity
     public string InvoiceNumber { get; private set; } = string.Empty;
     public SaleStatus Status { get; private set; } = SaleStatus.Draft;
 
+    public string CustomerNameSnapshot { get; private set; } = string.Empty;
+    public string CustomerEmailSnapshot { get; private set; } = string.Empty;
+    public string CustomerPhoneSnapshot { get; private set; } = string.Empty;
+    public string CustomerAddressSnapshot { get; private set; } = string.Empty;
+
+    public int SellerId { get; private set; }
+    public string SellerUserNameSnapshot { get; private set; } = string.Empty;
+    public string SellerFullNameSnapshot { get; private set; } = string.Empty;
+    public string SellerRoleSnapshot { get; private set; } = string.Empty;
+
     public IReadOnlyCollection<InvoiceDetail> Details => _details.AsReadOnly();
 
     public decimal Subtotal => _details.Sum(detail => detail.Subtotal);
@@ -38,6 +48,42 @@ public class Invoice : BaseEntity
             throw new DomainException("La secuencia de factura no es válida.");
 
         InvoiceNumber = $"FAC-{sequence:D10}";
+    }
+
+    public void SetAuditSnapshot(
+        string customerName,
+        string customerEmail,
+        string customerPhone,
+        string customerAddress,
+        int sellerId,
+        string sellerUserName,
+        string sellerFullName,
+        string sellerRole)
+    {
+        if (string.IsNullOrWhiteSpace(customerName))
+            throw new DomainException("El nombre del cliente para auditoría es obligatorio.");
+
+        if (sellerId <= 0)
+            throw new DomainException("El vendedor para auditoría es obligatorio.");
+
+        if (string.IsNullOrWhiteSpace(sellerUserName))
+            throw new DomainException("El usuario vendedor para auditoría es obligatorio.");
+
+        CustomerNameSnapshot = customerName.Trim().ToUpperInvariant();
+        CustomerEmailSnapshot = customerEmail?.Trim().ToLowerInvariant() ?? string.Empty;
+        CustomerPhoneSnapshot = customerPhone?.Trim() ?? string.Empty;
+        CustomerAddressSnapshot = customerAddress?.Trim().ToUpperInvariant() ?? string.Empty;
+
+        SellerId = sellerId;
+        SellerUserNameSnapshot = sellerUserName.Trim().ToLowerInvariant();
+
+        SellerFullNameSnapshot = string.IsNullOrWhiteSpace(sellerFullName)
+            ? sellerUserName.Trim().ToUpperInvariant()
+            : sellerFullName.Trim().ToUpperInvariant();
+
+        SellerRoleSnapshot = string.IsNullOrWhiteSpace(sellerRole)
+            ? "SELLER"
+            : sellerRole.Trim().ToUpperInvariant();
     }
 
     public void AddDetail(Product product, int quantity)
@@ -68,12 +114,14 @@ public class Invoice : BaseEntity
             throw new DomainException("El número de factura es obligatorio.");
 
         ValidateCustomer();
+        ValidateSellerSnapshot();
         ValidateDetails();
     }
 
     public void Confirm()
     {
         ValidateCustomer();
+        ValidateSellerSnapshot();
         ValidateDetails();
 
         if (Status != SaleStatus.Draft)
@@ -105,6 +153,18 @@ public class Invoice : BaseEntity
     {
         if (CustomerId <= 0)
             throw new DomainException("El cliente es obligatorio.");
+    }
+
+    private void ValidateSellerSnapshot()
+    {
+        if (string.IsNullOrWhiteSpace(CustomerNameSnapshot))
+            throw new DomainException("Los datos históricos del cliente son obligatorios.");
+
+        if (SellerId <= 0)
+            throw new DomainException("Los datos históricos del vendedor son obligatorios.");
+
+        if (string.IsNullOrWhiteSpace(SellerUserNameSnapshot))
+            throw new DomainException("El usuario histórico del vendedor es obligatorio.");
     }
 
     private void ValidateDetails()

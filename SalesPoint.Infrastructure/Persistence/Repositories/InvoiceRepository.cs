@@ -99,4 +99,19 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
             .Include(invoice => invoice.Details)
             .FirstOrDefaultAsync(invoice => invoice.Id == id);
     }
+
+    public async Task<Invoice?> GetByInvoiceNumberForAuditAsync(string invoiceNumber)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceNumber))
+            return null;
+
+        var cleanInvoiceNumber = invoiceNumber.Trim().ToUpperInvariant();
+
+        return await _context.Invoices
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(invoice => invoice.Details)
+            .FirstOrDefaultAsync(invoice =>
+                invoice.InvoiceNumber.ToUpper() == cleanInvoiceNumber);
+    }
 }

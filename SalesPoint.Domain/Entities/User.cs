@@ -14,6 +14,9 @@ public sealed class User : BaseEntity
     public string PasswordHash { get; private set; } = string.Empty;
     public bool IsActive { get; private set; } = true;
 
+    public string? PasswordResetTokenHash { get; private set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
+
     public Role? Role { get; private set; }
 
     private User() { }
@@ -86,6 +89,26 @@ public sealed class User : BaseEntity
             throw new DomainException("La contraseña del usuario es obligatoria.");
 
         PasswordHash = passwordHash.Trim();
+    }
+
+    public void ChangePassword(string newPasswordHash)
+    {
+        SetPasswordHash(newPasswordHash);
+    }
+
+    public void SetPasswordResetToken(string tokenHash, DateTime expiresAt)
+    {
+        if (string.IsNullOrWhiteSpace(tokenHash))
+            throw new DomainException("El token de recuperación es obligatorio.");
+
+        PasswordResetTokenHash = tokenHash.Trim();
+        PasswordResetTokenExpiresAt = expiresAt;
+    }
+
+    public void ClearPasswordResetToken()
+    {
+        PasswordResetTokenHash = null;
+        PasswordResetTokenExpiresAt = null;
     }
 
     public void Update(string userName, string email, int roleId, bool isActive)

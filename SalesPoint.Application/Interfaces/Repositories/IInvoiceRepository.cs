@@ -10,4 +10,5 @@ public interface IInvoiceRepository
     Task<List<Invoice>> GetAllAsync(int pageNumber, int pageSize);
     Task<int> CountAsync();
     Task<Invoice?> GetByIdAsync(int id);
+    Task<Invoice?> GetByInvoiceNumberForAuditAsync(string invoiceNumber);
 }

@@ -15,3 +15,20 @@ public sealed class LoginResponseDto
     public string Token { get; set; } = string.Empty;
     public DateTime Expiration { get; set; }
 }
+
+public sealed class ForgotPasswordRequestDto
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ForgotPasswordResponseDto
+{
+    public string ResetToken { get; set; } = string.Empty;
+}
+
+public sealed class ResetPasswordRequestDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string ResetToken { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}

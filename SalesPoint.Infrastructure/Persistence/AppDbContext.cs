@@ -19,34 +19,11 @@ public sealed class AppDbContext : DbContext
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+    public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-
-        modelBuilder.Entity<Role>()
-            .HasIndex(role => role.Name)
-            .IsUnique();
-
-        modelBuilder.Entity<User>()
-            .HasIndex(user => user.UserName)
-            .IsUnique();
-
-        modelBuilder.Entity<User>()
-            .HasIndex(user => user.Email)
-            .IsUnique();
-
-        modelBuilder.Entity<User>()
-            .HasOne(user => user.Role)
-            .WithMany()
-            .HasForeignKey(user => user.RoleId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<StockMovement>()
-            .HasOne(movement => movement.Product)
-            .WithMany()
-            .HasForeignKey(movement => movement.ProductId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         base.OnModelCreating(modelBuilder);
     }

@@ -380,3 +380,84 @@
     visibility: hidden !important;
   }
 }
+/* ===============================
+   FACTURA AUDITORÍA - VISUAL
+================================ */
+
+.invoice-audit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin: 32px 0 28px;
+}
+
+.invoice-audit-card {
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 18px;
+  padding: 20px 22px;
+}
+
+.invoice-audit-card h3 {
+  margin: 0 0 16px;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+  border-left: 5px solid #2563eb;
+  padding-left: 12px;
+}
+
+.invoice-audit-card p {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+  margin: 9px 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.invoice-audit-card strong {
+  color: #0f172a;
+}
+
+.invoice-audit-card span {
+  color: #334155;
+}
+
+.invoice-section-title {
+  margin: 28px 0 16px;
+  color: #0f172a;
+  font-size: 21px;
+  font-weight: 900;
+  border-left: 5px solid #16a34a;
+  padding-left: 12px;
+}
+
+.invoice-totals-preview {
+  width: 320px;
+  margin-left: auto;
+  margin-top: 28px;
+  text-align: right;
+}
+
+.invoice-totals-preview p {
+  font-size: 16px;
+  margin: 6px 0;
+}
+
+.invoice-totals-preview h2 {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 2px solid #dbe3ef;
+  font-size: 28px;
+}
+
+@media (max-width: 900px) {
+  .invoice-audit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-audit-card p {
+    grid-template-columns: 1fr;
+  }
+}

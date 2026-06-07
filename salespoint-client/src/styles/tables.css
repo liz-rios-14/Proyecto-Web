@@ -1,0 +1,138 @@
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+th {
+  background: #0f172a;
+  color: white;
+  padding: 13px;
+  text-align: left;
+  font-weight: 800;
+}
+
+td {
+  padding: 13px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+tr {
+  background: #ffffff;
+}
+
+tr:hover {
+  background: #eff6ff;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.data-table th {
+  background: #0f172a;
+  color: white;
+  padding: 13px;
+  text-align: left;
+  font-weight: 800;
+}
+
+.data-table td {
+  padding: 13px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.data-table tr:hover {
+  background: #eff6ff;
+}
+
+.table-quantity-input,
+.quantity-input {
+  max-width: 110px;
+  margin-bottom: 0;
+  text-align: right;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:focus {
+  outline: 4px solid #facc15;
+  outline-offset: -4px;
+  background: #fef9c3;
+}
+
+.selected-row {
+  background: #dbeafe !important;
+  outline: 3px solid #facc15;
+  outline-offset: -3px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.pagination,
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  flex-wrap: nowrap;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.pagination-page,
+.pagination-btn {
+  min-width: 42px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pagination-dots {
+  color: #64748b;
+  font-weight: 900;
+  padding: 0 4px;
+}
+
+.pagination-page:hover,
+.pagination-btn:hover {
+  background: #cbd5e1;
+}
+
+.pagination-page.active-page {
+  background: #2563eb;
+  color: white;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
