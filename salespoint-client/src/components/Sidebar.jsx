@@ -4,6 +4,7 @@ import KeyboardHelp from "./KeyboardHelp";
 import ThemeToggle from "./ThemeToggle";
 import {
   clearAuthSession,
+  getAuthRole,
   getAuthUser,
 } from "../services/authStorage";
 import { useAppAlert } from "./AppAlert";
@@ -16,15 +17,20 @@ export default function Sidebar() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [closingSession, setClosingSession] = useState(false);
   const authUser = getAuthUser();
-  const isAdministrator =
-    authUser?.roleName?.toUpperCase() === "ADMINISTRATOR";
+  const roleName = getAuthRole();
+  const isAdministrator = roleName === "ADMINISTRATOR";
+  const isSeller = roleName === "SELLER";
   const roleLabel = getRoleLabel(authUser?.roleName);
+  const draftKey = `salespoint-sale-draft-${authUser?.userId || authUser?.userName || "user"}`;
 
   const logout = async () => {
     if (closingSession) return;
 
+    const hasDraft = Boolean(localStorage.getItem(draftKey));
     const confirmed = await showConfirm(
-      "¿Seguro que desea cerrar la sesión actual?",
+      hasDraft
+        ? "Existe una venta en progreso. Si cierra sesión se guardará como borrador."
+        : "¿Seguro que desea cerrar la sesión actual?",
       {
         title: "Cerrar sesión",
         confirmText: "Sí, cerrar sesión",
@@ -78,13 +84,19 @@ export default function Sidebar() {
       "Ctrl + R → Recargar",
       "Alt + V → Ver factura",
     ],
-    "/": [
-      "Ctrl + 1 → Inicio",
-      "Ctrl + 2 → Facturación",
-      "Ctrl + 3 → Clientes",
-      "Ctrl + 4 → Productos",
-      "Ctrl + 5 → Historial",
-    ],
+    "/": isAdministrator
+      ? [
+          "Ctrl + 1 → Inicio",
+          "Ctrl + 3 → Clientes",
+          "Ctrl + 4 → Productos",
+          "Ctrl + 5 → Historial",
+        ]
+      : [
+          "Ctrl + 1 → Inicio",
+          "Ctrl + 2 → Facturación",
+          "Ctrl + 3 → Clientes",
+          "Ctrl + 5 → Historial",
+        ],
   };
 
   const currentShortcuts =
@@ -108,18 +120,20 @@ export default function Sidebar() {
             <span>Inicio</span>
           </NavLink>
 
-          <NavLink to="/sales" className="sidebar-link">
-            <span>🧾</span>
-            <span>Facturación</span>
+          {isSeller && (
+            <NavLink to="/sales" className="sidebar-link">
+              <span>🧾</span>
+              <span>Facturación</span>
+            </NavLink>
+          )}
+
+          <NavLink to="/customers" className="sidebar-link">
+            <span>👥</span>
+            <span>Clientes</span>
           </NavLink>
 
           {isAdministrator && (
             <>
-              <NavLink to="/customers" className="sidebar-link">
-                <span>👥</span>
-                <span>Clientes</span>
-              </NavLink>
-
               <NavLink to="/products" className="sidebar-link">
                 <span>📦</span>
                 <span>Productos</span>

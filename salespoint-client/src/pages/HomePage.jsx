@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -11,25 +12,28 @@ import {
   Users,
 } from "lucide-react";
 import Layout from "../components/Layout";
-import { getAuthUser } from "../services/authStorage";
+import { getAuthRole, getAuthUser } from "../services/authStorage";
 import { getRoleLabel } from "../services/roleLabels";
+import { useAppAlert } from "../components/AppAlert";
 
 export default function HomePage() {
+  const location = useLocation();
+  const { showAlert } = useAppAlert();
   const user = getAuthUser();
-  const isAdministrator =
-    user?.roleName?.toUpperCase() === "ADMINISTRATOR";
+  const isAdministrator = getAuthRole() === "ADMINISTRATOR";
   const roleLabel = getRoleLabel(user?.roleName);
+
+  useEffect(() => {
+    const permissionMessage = location.state?.permissionMessage;
+
+    if (!permissionMessage) return;
+
+    showAlert(permissionMessage, "warning");
+    window.history.replaceState({}, "", "/");
+  }, [location.state]);
 
   const cards = isAdministrator
     ? [
-        {
-          to: "/sales",
-          title: "Punto de venta",
-          description: "Genera facturas con control de stock y totales automáticos.",
-          action: "Abrir caja",
-          icon: ShoppingCart,
-          featured: true,
-        },
         {
           to: "/customers",
           title: "Clientes",
@@ -83,6 +87,13 @@ export default function HomePage() {
           featured: true,
         },
         {
+          to: "/customers",
+          title: "Clientes",
+          description: "Consulta clientes o registra uno nuevo antes de realizar la venta.",
+          action: "Consultar clientes",
+          icon: Users,
+        },
+        {
           to: "/invoices",
           title: "Mis facturas",
           description: "Consulta y reconstruye únicamente las ventas realizadas por ti.",
@@ -111,9 +122,12 @@ export default function HomePage() {
             </p>
 
             <div className="dashboard-actions">
-              <Link to="/sales" className="dashboard-primary-button">
-                <ShoppingCart size={18} />
-                Ir al punto de venta
+              <Link
+                to={isAdministrator ? "/products" : "/sales"}
+                className="dashboard-primary-button"
+              >
+                {isAdministrator ? <Boxes size={18} /> : <ShoppingCart size={18} />}
+                {isAdministrator ? "Administrar productos" : "Ir al punto de venta"}
               </Link>
 
               <Link
@@ -182,7 +196,7 @@ export default function HomePage() {
           </div>
 
           <div className="dashboard-stack">
-            <span>Facturación</span>
+            <span>{isAdministrator ? "Administración" : "Facturación"}</span>
             <span>Inventario</span>
             <span>Auditoría</span>
             <span>Seguridad</span>

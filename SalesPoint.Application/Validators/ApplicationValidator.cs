@@ -53,6 +53,10 @@ public static class ApplicationValidator
             throw new DomainException("La cédula no tiene una provincia válida.");
 
         var digits = clean.Select(c => c - '0').ToArray();
+
+        if (digits[2] >= 6)
+            throw new DomainException("Ingrese una cédula ecuatoriana válida.");
+
         var sum = 0;
         for (var i = 0; i < 9; i++)
         {

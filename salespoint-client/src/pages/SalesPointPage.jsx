@@ -1,13 +1,14 @@
 import Layout from "../components/Layout";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import SearchModal from "../components/SearchModal";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
-import { getAuthUser } from "../services/authStorage";
+import { getAuthRole, getAuthUser } from "../services/authStorage";
+import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
 
 const formatDateTime = (date) => {
   const pad = (value) => String(value).padStart(2, "0");
@@ -25,9 +26,27 @@ const toNumber = (value, defaultValue = 0) => {
 };
 
 export default function SalesPointPage() {
+  if (getAuthRole() !== "SELLER") {
+    return (
+      <Navigate
+        to="/"
+        replace
+        state={{
+          permissionMessage:
+            "No tiene permisos para registrar ventas. Esta función corresponde al rol Vendedor.",
+        }}
+      />
+    );
+  }
+
+  return <SalesPointContent />;
+}
+
+function SalesPointContent() {
   const location = useLocation();
-  const { showAlert } = useAppAlert();
+  const { showAlert, showConfirm } = useAppAlert();
   const authUser = getAuthUser();
+  const draftKey = `salespoint-sale-draft-${authUser?.userId || authUser?.userName || "user"}`;
 
   const [invoiceDate, setInvoiceDate] = useState(formatDateTime(new Date()));
   const [customer, setCustomer] = useState(null);
@@ -47,6 +66,7 @@ export default function SalesPointPage() {
 
   const [auditSource, setAuditSource] = useState("");
   const [auditOriginal, setAuditOriginal] = useState(null);
+  const [draftInitialized, setDraftInitialized] = useState(false);
 
   const customerButtonRef = useRef(null);
   const productButtonRef = useRef(null);
@@ -70,7 +90,50 @@ export default function SalesPointPage() {
   useEffect(() => {
     const reconstructedInvoice = location.state?.reconstructedInvoice;
 
-    if (!reconstructedInvoice) return;
+    if (!reconstructedInvoice) {
+      const restoreDraft = async () => {
+        const rawDraft = localStorage.getItem(draftKey);
+
+        if (!rawDraft) {
+          setDraftInitialized(true);
+          return;
+        }
+
+        try {
+          const draft = JSON.parse(rawDraft);
+          const recover = await showConfirm(
+            "Existe una venta en borrador. ¿Desea recuperarla?",
+            {
+              title: "Venta en borrador",
+              confirmText: "Recuperar borrador",
+              cancelText: "Descartar borrador",
+            }
+          );
+
+          if (recover) {
+            setCustomer(draft.customer ?? null);
+            setSeller(draft.seller ?? seller);
+            setProduct(draft.product ?? null);
+            setQuantity(draft.quantity ?? "");
+            setDetails(draft.details ?? []);
+            setInvoiceDate(draft.invoiceDate ?? formatDateTime(new Date()));
+            setAuditSource(draft.auditSource ?? "");
+            setAuditOriginal(draft.auditOriginal ?? null);
+            showAlert("Borrador recuperado correctamente.", "success");
+          } else {
+            localStorage.removeItem(draftKey);
+            showAlert("Borrador descartado correctamente.", "success");
+          }
+        } catch {
+          localStorage.removeItem(draftKey);
+        } finally {
+          setDraftInitialized(true);
+        }
+      };
+
+      restoreDraft();
+      return;
+    }
 
     const reconstructedCustomer = {
       id:
@@ -86,6 +149,10 @@ export default function SalesPointPage() {
       lastName:
         reconstructedInvoice.customer?.lastName ||
         reconstructedInvoice.customerLastName ||
+        "",
+      cedula:
+        reconstructedInvoice.customer?.cedula ||
+        reconstructedInvoice.customerCedula ||
         "",
       phone:
         reconstructedInvoice.customer?.phone ||
@@ -179,7 +246,47 @@ export default function SalesPointPage() {
     });
 
     setShowInvoicePreview(false);
+    setDraftInitialized(true);
   }, [location.state]);
+
+  useEffect(() => {
+    if (!draftInitialized || createdInvoice?.invoiceNumber) return;
+
+    const hasProgress =
+      customer ||
+      product ||
+      details.length > 0 ||
+      quantity ||
+      auditSource;
+
+    if (!hasProgress) return;
+
+    localStorage.setItem(
+      draftKey,
+      JSON.stringify({
+        customer,
+        seller,
+        product,
+        quantity,
+        details,
+        invoiceDate,
+        auditSource,
+        auditOriginal,
+        startedAt: new Date().toISOString(),
+      })
+    );
+  }, [
+    customer,
+    seller,
+    product,
+    quantity,
+    details,
+    invoiceDate,
+    auditSource,
+    auditOriginal,
+    createdInvoice,
+    draftInitialized,
+  ]);
 
   const subtotal = useMemo(
     () => details.reduce((sum, item) => sum + toNumber(item.subtotal), 0),
@@ -203,6 +310,10 @@ export default function SalesPointPage() {
       cleanValue = value.replace(/\D/g, "").slice(0, 10);
     }
 
+    if (field === "cedula") {
+      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+    }
+
     if (field === "address") {
       cleanValue = value.toUpperCase().slice(0, 150);
     }
@@ -215,6 +326,7 @@ export default function SalesPointPage() {
       id: currentCustomer?.id || 0,
       firstName: currentCustomer?.firstName || "",
       lastName: currentCustomer?.lastName || "",
+      cedula: currentCustomer?.cedula || "",
       phone: currentCustomer?.phone || "",
       address: currentCustomer?.address || "",
       email: currentCustomer?.email || "",
@@ -230,8 +342,9 @@ export default function SalesPointPage() {
       return "Seleccione un cliente válido.";
     }
 
-    const firstName = customer.firstName?.trim() ?? "";
-    const lastName = customer.lastName?.trim() ?? "";
+    const firstName = customer.firstName?.trim().replace(/\s+/g, " ") ?? "";
+    const lastName = customer.lastName?.trim().replace(/\s+/g, " ") ?? "";
+    const cedula = customer.cedula?.trim() ?? "";
     const phone = customer.phone?.trim() ?? "";
     const address = customer.address?.trim() ?? "";
     const email = customer.email?.trim() ?? "";
@@ -244,12 +357,27 @@ export default function SalesPointPage() {
       return "El nombre y apellido del cliente deben tener al menos 2 caracteres.";
     }
 
-    if (!/^\d{10}$/.test(phone)) {
-      return "El teléfono del cliente debe tener exactamente 10 dígitos.";
+    if (
+      !/^[A-ZÁÉÍÓÚÜÑ ]+$/i.test(firstName) ||
+      !/^[A-ZÁÉÍÓÚÜÑ ]+$/i.test(lastName)
+    ) {
+      return "El nombre y apellido del cliente solo pueden contener letras.";
+    }
+
+    if (cedula && !isValidEcuadorianCedula(cedula)) {
+      return "Ingrese una cédula ecuatoriana válida.";
+    }
+
+    if (!/^09\d{8}$/.test(phone)) {
+      return "Ingrese un número de teléfono válido.";
     }
 
     if (address.length < 5) {
       return "La dirección del cliente debe tener al menos 5 caracteres.";
+    }
+
+    if (!/^[A-ZÁÉÍÓÚÜÑ0-9 .,#-]+$/i.test(address)) {
+      return "La dirección contiene caracteres no permitidos.";
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -282,6 +410,14 @@ export default function SalesPointPage() {
         label: "Teléfono",
         original: auditOriginal.customer.phone || "Sin dato",
         current: customer?.phone || "Sin dato",
+      });
+    }
+
+    if ((auditOriginal.customer.cedula || "") !== (customer?.cedula || "")) {
+      changes.push({
+        label: "Cédula del cliente",
+        original: auditOriginal.customer.cedula || "Sin dato",
+        current: customer?.cedula || "Sin dato",
       });
     }
 
@@ -396,6 +532,7 @@ export default function SalesPointPage() {
     const params = {
       pageNumber: page,
       pageSize: 5,
+      onlyActive: true,
     };
 
     if (field && value) {
@@ -411,6 +548,7 @@ export default function SalesPointPage() {
     const params = {
       pageNumber: page,
       pageSize: 5,
+      onlyAvailable: true,
     };
 
     if (field && value) {
@@ -515,12 +653,22 @@ export default function SalesPointPage() {
     setCreatedInvoice(null);
   };
 
-  const removeDetail = (indexToRemove) => {
+  const removeDetail = async (indexToRemove) => {
+    const confirmed = await showConfirm(
+      "¿Está seguro de quitar este producto del detalle?",
+      {
+        title: "Quitar producto",
+        confirmText: "Sí, quitar",
+      }
+    );
+
+    if (!confirmed) return;
+
     setDetails(details.filter((_, index) => index !== indexToRemove));
     setCreatedInvoice(null);
   };
 
-  const cleanInvoice = () => {
+  const cleanInvoiceState = () => {
     setCustomer(null);
     setSeller({
       userName: authUser?.userName || "admin",
@@ -535,6 +683,25 @@ export default function SalesPointPage() {
     setAuditSource("");
     setAuditOriginal(null);
     setInvoiceDate(formatDateTime(new Date()));
+    localStorage.removeItem(draftKey);
+  };
+
+  const cleanInvoice = async () => {
+    const hasProgress = customer || product || details.length > 0 || auditSource;
+
+    if (hasProgress && !createdInvoice?.invoiceNumber) {
+      const confirmed = await showConfirm(
+        "¿Está seguro de limpiar la venta actual? Se perderá el borrador.",
+        {
+          title: "Limpiar venta",
+          confirmText: "Sí, limpiar",
+        }
+      );
+
+      if (!confirmed) return;
+    }
+
+    cleanInvoiceState();
   };
 
   const closeAllModals = () => {
@@ -613,6 +780,7 @@ export default function SalesPointPage() {
     const request = {
       customerId: Number(customer.id),
       customerName: `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim(),
+      customerCedula: customer?.cedula ?? "",
       customerEmail: customer?.email ?? "",
       customerPhone: customer?.phone ?? "",
       customerAddress: customer?.address ?? "",
@@ -622,10 +790,22 @@ export default function SalesPointPage() {
       })),
     };
 
+    const confirmed = await showConfirm(
+      "¿Está seguro de finalizar esta venta? Después de confirmar no podrá modificarla.",
+      {
+        title: "Finalizar venta",
+        confirmText: "Sí, finalizar",
+      }
+    );
+
+    if (!confirmed) return;
+
     try {
       const response = await api.post("/invoices", request);
 
       setCreatedInvoice(response.data);
+      localStorage.removeItem(draftKey);
+      showAlert("Factura generada correctamente.", "success");
 
       setDetails((currentDetails) =>
         currentDetails.map((item) => ({
@@ -720,6 +900,14 @@ export default function SalesPointPage() {
             onChange={(event) =>
               updateCustomerField("lastName", event.target.value)
             }
+          />
+
+          <input
+            value={customer?.cedula || ""}
+            placeholder="Cédula ecuatoriana"
+            inputMode="numeric"
+            maxLength="10"
+            onChange={(event) => updateCustomerField("cedula", event.target.value)}
           />
 
           <input
@@ -932,6 +1120,7 @@ export default function SalesPointPage() {
           { key: "id", label: "Id", type: "number" },
           { key: "firstName", label: "Nombre" },
           { key: "lastName", label: "Apellido" },
+          { key: "cedula", label: "Cédula" },
           { key: "phone", label: "Teléfono" },
           { key: "address", label: "Dirección" },
           { key: "email", label: "Correo" },
@@ -939,6 +1128,7 @@ export default function SalesPointPage() {
         searchFields={[
           { key: "id", label: "Id", type: "number" },
           { key: "firstName", label: "Nombre" },
+          { key: "cedula", label: "Cédula", type: "number" },
           { key: "lastName", label: "Apellido" },
           { key: "phone", label: "Teléfono" },
           { key: "address", label: "Dirección" },

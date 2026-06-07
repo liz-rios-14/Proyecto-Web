@@ -37,18 +37,18 @@ public sealed class AuthService : IAuthService
             .GetByUserNameOrEmailAsync(request.UserNameOrEmail);
 
         if (user is null)
-            return LoginResultDto.Failure("Credenciales incorrectas.");
+            return LoginResultDto.Failure("Correo o contraseña incorrectos.");
 
         if (!user.IsActive || user.IsDeleted)
         {
             return LoginResultDto.Failure(
-                "El usuario está inactivo o eliminado.");
+                "El usuario se encuentra inactivo.");
         }
 
         if (user.IsLocked)
         {
             return LoginResultDto.Failure(
-                "El usuario está bloqueado. Solicite al administrador que lo desbloquee.");
+                "El usuario se encuentra bloqueado. Contacte al administrador.");
         }
 
         if (user.PasswordHash != UserService.Hash(request.Password))
@@ -59,12 +59,12 @@ public sealed class AuthService : IAuthService
             if (user.IsLocked)
             {
                 return LoginResultDto.Failure(
-                    "Usuario bloqueado por 3 intentos fallidos. Solicite el desbloqueo al administrador.");
+                    "El usuario se encuentra bloqueado. Contacte al administrador.");
             }
 
             var remainingAttempts = 3 - user.FailedLoginAttempts;
             return LoginResultDto.Failure(
-                $"Credenciales incorrectas. Intentos restantes: {remainingAttempts}.");
+                $"Correo o contraseña incorrectos. Intentos restantes: {remainingAttempts}.");
         }
 
         if (user.FailedLoginAttempts > 0)

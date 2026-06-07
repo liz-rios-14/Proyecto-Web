@@ -15,6 +15,7 @@ public class Invoice : BaseEntity
     public SaleStatus Status { get; private set; } = SaleStatus.Draft;
 
     public string CustomerNameSnapshot { get; private set; } = string.Empty;
+    public string CustomerCedulaSnapshot { get; private set; } = string.Empty;
     public string CustomerEmailSnapshot { get; private set; } = string.Empty;
     public string CustomerPhoneSnapshot { get; private set; } = string.Empty;
     public string CustomerAddressSnapshot { get; private set; } = string.Empty;
@@ -52,6 +53,7 @@ public class Invoice : BaseEntity
 
     public void SetAuditSnapshot(
         string customerName,
+        string customerCedula,
         string customerEmail,
         string customerPhone,
         string customerAddress,
@@ -70,6 +72,7 @@ public class Invoice : BaseEntity
             throw new DomainException("El usuario vendedor para auditoría es obligatorio.");
 
         CustomerNameSnapshot = customerName.Trim().ToUpperInvariant();
+        CustomerCedulaSnapshot = customerCedula?.Trim() ?? string.Empty;
         CustomerEmailSnapshot = customerEmail?.Trim().ToLowerInvariant() ?? string.Empty;
         CustomerPhoneSnapshot = customerPhone?.Trim() ?? string.Empty;
         CustomerAddressSnapshot = customerAddress?.Trim().ToUpperInvariant() ?? string.Empty;

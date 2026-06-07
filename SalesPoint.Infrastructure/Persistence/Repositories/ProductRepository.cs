@@ -13,18 +13,19 @@ public sealed class ProductRepository : IProductRepository
         _context = context;
     }
 
-    public async Task<List<Product>> SearchAsync(string field, string value)
+    public async Task<List<Product>> SearchAsync(string field, string value, bool onlyAvailable)
     {
-        return await SearchAsync(field, value, 1, 8);
+        return await SearchAsync(field, value, 1, 8, onlyAvailable);
     }
 
     public async Task<List<Product>> SearchAsync(
         string field,
         string value,
         int pageNumber,
-        int pageSize)
+        int pageSize,
+        bool onlyAvailable)
     {
-        var query = BuildSearchQuery(field, value);
+        var query = BuildSearchQuery(field, value, onlyAvailable);
 
         pageNumber = pageNumber <= 0 ? 1 : pageNumber;
         pageSize = pageSize <= 0 ? 8 : pageSize;
@@ -36,9 +37,9 @@ public sealed class ProductRepository : IProductRepository
             .ToListAsync();
     }
 
-    public async Task<int> CountAsync(string field, string value)
+    public async Task<int> CountAsync(string field, string value, bool onlyAvailable)
     {
-        var query = BuildSearchQuery(field, value);
+        var query = BuildSearchQuery(field, value, onlyAvailable);
         return await query.CountAsync();
     }
 
@@ -67,6 +68,13 @@ public sealed class ProductRepository : IProductRepository
                 (!excludeId.HasValue || product.Id != excludeId.Value));
     }
 
+    public async Task<bool> HasHistoryAsync(int id)
+    {
+        return await _context.Set<InvoiceDetail>().AnyAsync(detail => detail.ProductId == id) ||
+               await _context.SaleDetails.AnyAsync(detail => detail.ProductId == id) ||
+               await _context.StockMovements.AnyAsync(movement => movement.ProductId == id);
+    }
+
     public async Task<Product> CreateAsync(Product product)
     {
         await _context.Products.AddAsync(product);
@@ -87,12 +95,15 @@ public sealed class ProductRepository : IProductRepository
         await _context.SaveChangesAsync();
     }
 
-    private IQueryable<Product> BuildSearchQuery(string field, string value)
+    private IQueryable<Product> BuildSearchQuery(string field, string value, bool onlyAvailable)
     {
         var query = _context.Products
             .AsNoTracking()
-            .Where(product => product.IsActive && product.Stock > 0)
+            .Where(product => !product.IsDeleted)
             .AsQueryable();
+
+        if (onlyAvailable)
+            query = query.Where(product => product.IsActive && product.Stock > 0);
 
         if (string.IsNullOrWhiteSpace(field) || string.IsNullOrWhiteSpace(value))
             return query;

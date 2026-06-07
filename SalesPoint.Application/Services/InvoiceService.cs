@@ -3,8 +3,10 @@ using SalesPoint.Application.DTOs.Invoices;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Application.Interfaces.Security;
 using SalesPoint.Application.Interfaces.Services;
+using SalesPoint.Application.Validators;
 using SalesPoint.Domain.Entities;
 using SalesPoint.Domain.Exceptions;
+using System.Text.RegularExpressions;
 
 namespace SalesPoint.Application.Services;
 
@@ -46,9 +48,16 @@ public sealed class InvoiceService : IInvoiceService
         if (customer is null)
             throw new DomainException("El cliente seleccionado no existe.");
 
+        if (!customer.IsActive || customer.IsDeleted)
+            throw new DomainException("El cliente seleccionado ya no está activo. Seleccione otro cliente.");
+
         var customerNameSnapshot = string.IsNullOrWhiteSpace(request.CustomerName)
             ? $"{customer.FirstName} {customer.LastName}".Trim()
             : request.CustomerName.Trim();
+
+        var customerCedulaSnapshot = string.IsNullOrWhiteSpace(request.CustomerCedula)
+            ? customer.Cedula ?? string.Empty
+            : request.CustomerCedula.Trim();
 
         var customerEmailSnapshot = string.IsNullOrWhiteSpace(request.CustomerEmail)
             ? customer.Email
@@ -62,6 +71,28 @@ public sealed class InvoiceService : IInvoiceService
             ? customer.Address
             : request.CustomerAddress.Trim();
 
+        ApplicationValidator.Required(customerNameSnapshot, "El nombre del cliente");
+
+        if (!string.IsNullOrWhiteSpace(customerCedulaSnapshot))
+            ApplicationValidator.EcuadorianCedula(customerCedulaSnapshot);
+
+        ApplicationValidator.Email(customerEmailSnapshot);
+
+        if (customerNameSnapshot.Length < 3 || customerNameSnapshot.Length > 100)
+            throw new DomainException("El nombre completo del cliente debe tener entre 3 y 100 caracteres.");
+
+        if (!Regex.IsMatch(customerNameSnapshot, @"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$"))
+            throw new DomainException("El nombre del cliente solo puede contener letras.");
+
+        if (!Regex.IsMatch(customerPhoneSnapshot, @"^09\d{8}$"))
+            throw new DomainException("Ingrese un número de teléfono válido.");
+
+        if (customerAddressSnapshot.Length < 5 || customerAddressSnapshot.Length > 150)
+            throw new DomainException("La dirección del cliente debe tener entre 5 y 150 caracteres.");
+
+        if (!Regex.IsMatch(customerAddressSnapshot, @"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$"))
+            throw new DomainException("La dirección contiene caracteres no permitidos.");
+
         var invoice = new Invoice(request.CustomerId);
         var seller = await _userRepository.GetByIdAsync(_currentUser.UserId)
             ?? throw new DomainException("El vendedor autenticado no existe.");
@@ -71,6 +102,7 @@ public sealed class InvoiceService : IInvoiceService
 
         invoice.SetAuditSnapshot(
             customerName: customerNameSnapshot,
+            customerCedula: customerCedulaSnapshot,
             customerEmail: customerEmailSnapshot,
             customerPhone: customerPhoneSnapshot,
             customerAddress: customerAddressSnapshot,
@@ -93,25 +125,45 @@ public sealed class InvoiceService : IInvoiceService
             var product = await _productRepository.GetByIdAsync(detail.ProductId);
 
             if (product is null)
-                throw new DomainException($"El producto con id {detail.ProductId} no existe.");
+                throw new DomainException("El producto seleccionado ya no existe o no está disponible.");
 
-            if (!product.IsActive)
-                throw new DomainException($"El producto {product.Name} está inactivo.");
+            if (!product.IsActive || product.IsDeleted)
+                throw new DomainException(
+                    $"El producto {product.Name} ya no está disponible. Retírelo del detalle o seleccione otro producto.");
+
+            if (product.Stock <= 0)
+                throw new DomainException($"El producto {product.Name} ya no tiene stock disponible.");
 
             if (detail.Quantity > product.Stock)
                 throw new InsufficientStockException(
-                    $"Stock insuficiente para {product.Name}. Disponible: {product.Stock}.");
+                    $"El stock disponible de {product.Name} cambió. Stock actual: {product.Stock}. Cantidad solicitada: {detail.Quantity}.");
 
             invoice.AddDetail(product, detail.Quantity);
         }
 
         invoice.Confirm();
 
-        var createdInvoice = await _invoiceRepository.CreateAsync(invoice);
+        Invoice createdInvoice;
+
+        try
+        {
+            createdInvoice = await _invoiceRepository.CreateAsync(invoice);
+        }
+        catch (DomainException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new DomainException(
+                "No se pudo registrar la factura. No se realizó ningún descuento de stock.",
+                ex);
+        }
 
         var dto = MapInvoiceToDto(createdInvoice);
 
         dto.CustomerName = createdInvoice.CustomerNameSnapshot;
+        dto.CustomerCedula = createdInvoice.CustomerCedulaSnapshot;
         dto.CustomerPhone = createdInvoice.CustomerPhoneSnapshot;
         dto.CustomerAddress = createdInvoice.CustomerAddressSnapshot;
         dto.CustomerEmail = createdInvoice.CustomerEmailSnapshot;
@@ -176,6 +228,10 @@ public sealed class InvoiceService : IInvoiceService
                 : $"{customer.FirstName} {customer.LastName}".Trim()
             : invoice.CustomerNameSnapshot;
 
+        dto.CustomerCedula = string.IsNullOrWhiteSpace(invoice.CustomerCedulaSnapshot)
+            ? customer?.Cedula ?? string.Empty
+            : invoice.CustomerCedulaSnapshot;
+
         dto.CustomerPhone = string.IsNullOrWhiteSpace(invoice.CustomerPhoneSnapshot)
             ? customer?.Phone ?? "No registrado"
             : invoice.CustomerPhoneSnapshot;
@@ -226,6 +282,10 @@ public sealed class InvoiceService : IInvoiceService
                 Name = customerName,
                 FirstName = separatedName.FirstName,
                 LastName = separatedName.LastName,
+
+                Cedula = string.IsNullOrWhiteSpace(invoice.CustomerCedulaSnapshot)
+                    ? customer?.Cedula ?? string.Empty
+                    : invoice.CustomerCedulaSnapshot,
 
                 Email = string.IsNullOrWhiteSpace(invoice.CustomerEmailSnapshot)
                     ? customer?.Email ?? string.Empty
@@ -312,6 +372,7 @@ public sealed class InvoiceService : IInvoiceService
             Tax = invoice.Tax,
             Total = invoice.Total,
             CustomerName = invoice.CustomerNameSnapshot,
+            CustomerCedula = invoice.CustomerCedulaSnapshot,
             CustomerPhone = invoice.CustomerPhoneSnapshot,
             CustomerAddress = invoice.CustomerAddressSnapshot,
             CustomerEmail = invoice.CustomerEmailSnapshot,

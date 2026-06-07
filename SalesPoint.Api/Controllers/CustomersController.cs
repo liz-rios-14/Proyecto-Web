@@ -22,9 +22,11 @@ public class CustomersController : ControllerBase
         [FromQuery] string field = "",
         [FromQuery] string value = "",
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = 10,
+        [FromQuery] bool onlyActive = false)
     {
-        var result = await _service.SearchAsync(field, value, pageNumber, pageSize);
+        onlyActive = onlyActive || User.IsInRole("SELLER");
+        var result = await _service.SearchAsync(field, value, pageNumber, pageSize, onlyActive);
         return Ok(result);
     }
 
@@ -40,6 +42,7 @@ public class CustomersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "ADMINISTRATOR,SELLER")]
     public async Task<IActionResult> Create([FromBody] CreateCustomerRequest request)
     {
         var result = await _service.CreateAsync(request);
@@ -58,7 +61,6 @@ public class CustomersController : ControllerBase
     [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Delete(int id)
     {
-        await _service.DeleteAsync(id);
-        return Ok(new { message = "Cliente eliminado correctamente." });
+        return Ok(await _service.DeleteAsync(id));
     }
 }

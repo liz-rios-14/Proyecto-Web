@@ -1,4 +1,5 @@
 import { getRoleLabel } from "../services/roleLabels";
+import { useAppAlert } from "./AppAlert";
 
 export default function InvoicePreviewModal({
   isOpen,
@@ -15,6 +16,8 @@ export default function InvoicePreviewModal({
   onCloseAndClean,
   onCreateNewSale,
 }) {
+  const { showAlert } = useAppAlert();
+
   if (!isOpen) return null;
 
   const isFinalized = invoiceNumber && String(invoiceNumber).trim() !== "";
@@ -36,6 +39,7 @@ export default function InvoicePreviewModal({
     name:
       `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim() ||
       "No registrado",
+    cedula: safeValue(customer?.cedula, "No registrada"),
     phone: safeValue(customer?.phone),
     address: safeValue(customer?.address, "No registrada"),
     email: safeValue(customer?.email),
@@ -215,6 +219,7 @@ export default function InvoicePreviewModal({
                 <p><strong>Fecha:</strong> <span>${safeValue(invoiceDate)}</span></p>
                 <p><strong>ID:</strong> <span>${customerData.id}</span></p>
                 <p><strong>Cliente:</strong> <span>${customerData.name}</span></p>
+                <p><strong>Cédula:</strong> <span>${customerData.cedula}</span></p>
                 <p><strong>Teléfono:</strong> <span>${customerData.phone}</span></p>
                 <p><strong>Dirección:</strong> <span>${customerData.address}</span></p>
                 <p><strong>Correo:</strong> <span>${customerData.email}</span></p>
@@ -292,6 +297,7 @@ export default function InvoicePreviewModal({
     iframe.onload = () => {
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
+      showAlert("PDF generado correctamente.", "success");
 
       setTimeout(() => {
         document.body.removeChild(iframe);
@@ -537,6 +543,7 @@ export default function InvoicePreviewModal({
                 <p><strong>Fecha:</strong><span>{safeValue(invoiceDate)}</span></p>
                 <p><strong>ID:</strong><span>{customerData.id}</span></p>
                 <p><strong>Cliente:</strong><span>{customerData.name}</span></p>
+                <p><strong>Cédula:</strong><span>{customerData.cedula}</span></p>
                 <p><strong>Teléfono:</strong><span>{customerData.phone}</span></p>
                 <p><strong>Dirección:</strong><span>{customerData.address}</span></p>
                 <p><strong>Correo:</strong><span>{customerData.email}</span></p>

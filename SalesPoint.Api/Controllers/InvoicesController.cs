@@ -54,6 +54,7 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SELLER")]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest request)
     {
         var result = await _invoiceService.CreateAsync(request);

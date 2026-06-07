@@ -9,10 +9,11 @@ public interface IProductService
         string field,
         string value,
         int pageNumber,
-        int pageSize);
+        int pageSize,
+        bool onlyAvailable);
 
     Task<ProductDto?> GetByIdAsync(int id);
     Task<ProductDto> CreateAsync(CreateProductRequest request);
     Task UpdateAsync(int id, UpdateProductRequest request);
-    Task DeleteAsync(int id);
+    Task<DeleteResultDto> DeleteAsync(int id);
 }

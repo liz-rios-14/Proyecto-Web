@@ -32,7 +32,7 @@ export default function App() {
         <Route
           path="/customers"
           element={
-            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR", "SELLER"]}>
               <CustomerManagerPage />
             </ProtectedRoute>
           }
@@ -50,7 +50,10 @@ export default function App() {
         <Route
           path="/sales"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute
+              allowedRoles={["SELLER"]}
+              deniedMessage="No tiene permisos para registrar ventas. Esta función corresponde al rol Vendedor."
+            >
               <SalesPointPage />
             </ProtectedRoute>
           }

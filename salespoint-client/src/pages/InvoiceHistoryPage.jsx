@@ -212,6 +212,11 @@ export default function InvoiceHistoryPage() {
         ),
         firstName,
         lastName,
+        cedula: getValue(
+          rawCustomer.cedula,
+          rawCustomer.customerCedula,
+          data.customerCedula
+        ),
         phone: getValue(rawCustomer.phone, rawCustomer.telephone, data.phone),
         address: getValue(
           rawCustomer.address,

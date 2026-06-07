@@ -42,6 +42,11 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasMaxLength(150)
             .IsRequired();
 
+        builder.Property(invoice => invoice.CustomerCedulaSnapshot)
+            .HasColumnName("customer_cedula_snapshot")
+            .HasMaxLength(10)
+            .IsRequired();
+
         builder.Property(invoice => invoice.CustomerEmailSnapshot)
             .HasColumnName("customer_email_snapshot")
             .HasMaxLength(150);

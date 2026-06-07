@@ -6,7 +6,7 @@ using SalesPoint.Application.Interfaces.Services;
 namespace SalesPoint.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "ADMINISTRATOR")]
+[Authorize(Roles = "ADMINISTRATOR,SELLER")]
 [Route("api/sales")]
 public class SalesController : ControllerBase
 {
@@ -18,12 +18,14 @@ public class SalesController : ControllerBase
     }
 
     [HttpGet("history")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> GetHistory()
     {
         return Ok(await _service.GetHistoryAsync());
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> GetById(int id)
     {
         return (await _service.GetInvoiceByIdAsync(id)) is { } result
@@ -32,18 +34,21 @@ public class SalesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SELLER")]
     public async Task<IActionResult> Create([FromBody] SaleCreateDto request)
     {
         return Ok(await _service.CreateAsync(request));
     }
 
     [HttpPost("{id}/confirm")]
+    [Authorize(Roles = "SELLER")]
     public async Task<IActionResult> Confirm(int id)
     {
         return Ok(await _service.ConfirmAsync(id));
     }
 
     [HttpPost("{id}/cancel")]
+    [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Cancel(int id)
     {
         return Ok(await _service.CancelAsync(id));

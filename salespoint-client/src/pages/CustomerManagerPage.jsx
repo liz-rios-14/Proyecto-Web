@@ -6,10 +6,13 @@ import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
+import { getAuthRole } from "../services/authStorage";
 
 const emptyCustomerForm = {
   firstName: "",
   lastName: "",
+  cedula: "",
   phone: "",
   address: "",
   email: "",
@@ -19,6 +22,7 @@ const customerColumns = [
   { key: "id", label: "Id", type: "number" },
   { key: "firstName", label: "Nombre" },
   { key: "lastName", label: "Apellido" },
+  { key: "cedula", label: "Cédula" },
   { key: "phone", label: "Teléfono" },
   { key: "address", label: "Dirección" },
   { key: "email", label: "Correo" },
@@ -28,6 +32,7 @@ const customerSearchFields = [
   { key: "id", label: "Id", type: "number" },
   { key: "firstName", label: "Nombre" },
   { key: "lastName", label: "Apellido" },
+  { key: "cedula", label: "Cédula", type: "number" },
   { key: "phone", label: "Teléfono" },
   { key: "address", label: "Dirección" },
   { key: "email", label: "Correo" },
@@ -35,6 +40,7 @@ const customerSearchFields = [
 
 export default function CustomerManagerPage() {
   const { showAlert, showConfirm } = useAppAlert();
+  const isAdministrator = getAuthRole() === "ADMINISTRATOR";
   const [customers, setCustomers] = useState([]);
   const [form, setForm] = useState(emptyCustomerForm);
   const [editingId, setEditingId] = useState(null);
@@ -49,20 +55,29 @@ export default function CustomerManagerPage() {
   const searchInputRef = useRef(null);
 
   const loadCustomers = async (currentPage = page) => {
-    const params = {
-      pageNumber: currentPage,
-      pageSize: 8,
-    };
+    try {
+      const params = {
+        pageNumber: currentPage,
+        pageSize: 8,
+      };
 
-    if (searchField && searchValue.trim()) {
-      params.field = searchField;
-      params.value = searchValue.trim();
+      if (searchField && searchValue.trim()) {
+        params.field = searchField;
+        params.value = searchValue.trim();
+      }
+
+      const response = await api.get("/customers/search", { params });
+
+      setCustomers(response.data.items ?? []);
+      setTotalPages(Math.max(response.data.totalPages ?? 1, 1));
+    } catch (error) {
+      setCustomers([]);
+      setTotalPages(1);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo cargar la lista de clientes."),
+        "error"
+      );
     }
-
-    const response = await api.get("/customers/search", { params });
-
-    setCustomers(response.data.items ?? []);
-    setTotalPages(response.data.totalPages ?? 1);
   };
 
   useEffect(() => {
@@ -81,7 +96,7 @@ export default function CustomerManagerPage() {
   const handleSearchValueChange = (event) => {
     const value = event.target.value;
 
-    if (searchField === "id" || searchField === "phone") {
+    if (searchField === "id" || searchField === "phone" || searchField === "cedula") {
       setSearchValue(value.replace(/\D/g, ""));
       return;
     }
@@ -113,6 +128,11 @@ export default function CustomerManagerPage() {
       return;
     }
 
+    if (name === "cedula") {
+      setForm({ ...form, cedula: value.replace(/\D/g, "").slice(0, 10) });
+      return;
+    }
+
     if (name === "address") {
       setForm({ ...form, address: value.toUpperCase().slice(0, 150) });
       return;
@@ -133,14 +153,15 @@ export default function CustomerManagerPage() {
 
   const saveCustomer = async () => {
     const request = {
-      firstName: form.firstName.trim().toUpperCase(),
-      lastName: form.lastName.trim().toUpperCase(),
+      firstName: form.firstName.trim().replace(/\s+/g, " ").toUpperCase(),
+      lastName: form.lastName.trim().replace(/\s+/g, " ").toUpperCase(),
+      cedula: form.cedula.trim(),
       phone: form.phone.trim(),
-      address: form.address.trim().toUpperCase(),
+      address: form.address.trim().replace(/\s+/g, " ").toUpperCase(),
       email: form.email.trim().toLowerCase(),
     };
 
-    if (!request.firstName || !request.lastName || !request.phone || !request.address || !request.email) {
+    if (!request.firstName || !request.lastName || !request.cedula || !request.phone || !request.address || !request.email) {
       showAlert("Complete todos los campos.", "warning");
       return;
     }
@@ -165,13 +186,23 @@ export default function CustomerManagerPage() {
       return;
     }
 
-    if (!/^\d{10}$/.test(request.phone)) {
-      showAlert("El teléfono debe tener exactamente 10 dígitos.", "warning");
+    if (!isValidEcuadorianCedula(request.cedula)) {
+      showAlert("Ingrese una cédula ecuatoriana válida.", "warning");
+      return;
+    }
+
+    if (!/^09\d{8}$/.test(request.phone)) {
+      showAlert("Ingrese un número de teléfono válido.", "warning");
       return;
     }
 
     if (request.address.length < 5 || request.address.length > 150) {
       showAlert("La dirección debe tener entre 5 y 150 caracteres.", "warning");
+      return;
+    }
+
+    if (!/^[A-ZÁÉÍÓÚÜÑ0-9 .,#-]+$/.test(request.address)) {
+      showAlert("La dirección contiene caracteres no permitidos.", "warning");
       return;
     }
 
@@ -181,16 +212,26 @@ export default function CustomerManagerPage() {
     }
 
     try {
-      const duplicateResponse = await api.get("/customers/search", {
-        params: {
-          field: "email",
-          value: request.email,
-          pageNumber: 1,
-          pageSize: 10,
-        },
-      });
+      const [emailResponse, cedulaResponse] = await Promise.all([
+        api.get("/customers/search", {
+          params: {
+            field: "email",
+            value: request.email,
+            pageNumber: 1,
+            pageSize: 10,
+          },
+        }),
+        api.get("/customers/search", {
+          params: {
+            field: "cedula",
+            value: request.cedula,
+            pageNumber: 1,
+            pageSize: 10,
+          },
+        }),
+      ]);
 
-      const duplicateCustomer = (duplicateResponse.data.items ?? []).find(
+      const duplicateCustomer = (emailResponse.data.items ?? []).find(
         (customer) =>
           customer.email?.trim().toLowerCase() === request.email &&
           customer.id !== editingId
@@ -201,6 +242,22 @@ export default function CustomerManagerPage() {
           editingId
             ? "Ya existe otro cliente con el mismo correo."
             : "Ya existe un cliente con el mismo correo.",
+          "warning"
+        );
+        return;
+      }
+
+      const duplicateCedula = (cedulaResponse.data.items ?? []).find(
+        (customer) =>
+          customer.cedula === request.cedula &&
+          customer.id !== editingId
+      );
+
+      if (duplicateCedula) {
+        showAlert(
+          editingId
+            ? "Ya existe otro cliente registrado con esta cédula."
+            : "Ya existe un cliente registrado con esta cédula.",
           "warning"
         );
         return;
@@ -231,6 +288,7 @@ export default function CustomerManagerPage() {
     setForm({
       firstName: customer.firstName,
       lastName: customer.lastName,
+      cedula: customer.cedula ?? "",
       phone: customer.phone,
       address: customer.address,
       email: customer.email,
@@ -242,16 +300,31 @@ export default function CustomerManagerPage() {
       "¿Seguro que desea eliminar este cliente?",
       {
         title: "Eliminar cliente",
-        confirmText: "Sí, eliminar",
+        confirmText: "Sí, continuar",
       }
     );
 
     if (!confirmed) return;
 
+    const finalConfirmation = await showConfirm(
+      "Si el cliente tiene historial se desactivará para conservar la auditoría. Si no tiene historial se eliminará físicamente. ¿Desea continuar?",
+      {
+        title: "Confirmación final",
+        confirmText: "Confirmar",
+      }
+    );
+
+    if (!finalConfirmation) return;
+
     try {
-      await api.delete(`/customers/${id}`);
-      showAlert("Cliente eliminado correctamente.", "success");
-      loadCustomers(page);
+      const response = await api.delete(`/customers/${id}`);
+      showAlert(response.data?.message ?? "Cliente procesado correctamente.", "success");
+
+      if (customers.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        loadCustomers(page);
+      }
     } catch (error) {
       console.error(error);
       showAlert(
@@ -283,6 +356,7 @@ export default function CustomerManagerPage() {
         <div className="form-grid">
           <input name="firstName" placeholder="Nombre" maxLength="40" value={form.firstName} onChange={handleChange} />
           <input name="lastName" placeholder="Apellido" maxLength="40" value={form.lastName} onChange={handleChange} />
+          <input name="cedula" placeholder="Cédula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
           <input name="phone" placeholder="Teléfono" inputMode="numeric" maxLength="10" value={form.phone} onChange={handleChange} />
           <input name="address" placeholder="Dirección" maxLength="150" value={form.address} onChange={handleChange} />
           <input name="email" placeholder="Correo" type="email" maxLength="120" value={form.email} onChange={handleChange} />
@@ -320,7 +394,7 @@ export default function CustomerManagerPage() {
           <input
             ref={searchInputRef}
             placeholder="Ingrese valor de búsqueda"
-            type={searchField === "id" ? "number" : "text"}
+            type={searchField === "id" || searchField === "cedula" ? "number" : "text"}
             value={searchValue}
             onChange={handleSearchValueChange}
           />
@@ -340,13 +414,17 @@ export default function CustomerManagerPage() {
           emptyMessage="Sin clientes registrados"
           actions={(customer) => (
             <>
-              <button className="table-action edit-button" onClick={() => editCustomer(customer)}>
-                ✏️ Editar
-              </button>
+              {isAdministrator && (
+                <>
+                  <button className="table-action edit-button" onClick={() => editCustomer(customer)}>
+                    ✏️ Editar
+                  </button>
 
-              <button className="table-action delete-button" onClick={() => deleteCustomer(customer.id)}>
-                🗑️ Eliminar
-              </button>
+                  <button className="table-action delete-button" onClick={() => deleteCustomer(customer.id)}>
+                    🗑️ Eliminar / desactivar
+                  </button>
+                </>
+              )}
             </>
           )}
         />

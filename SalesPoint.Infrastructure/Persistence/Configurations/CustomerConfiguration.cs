@@ -25,6 +25,14 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasMaxLength(80)
             .IsRequired();
 
+        builder.Property(customer => customer.Cedula)
+            .HasColumnName("cedula")
+            .HasMaxLength(10);
+
+        builder.HasIndex(customer => customer.Cedula)
+            .IsUnique()
+            .HasFilter("[cedula] IS NOT NULL");
+
         builder.Property(customer => customer.Phone)
             .HasColumnName("phone")
             .HasMaxLength(20)

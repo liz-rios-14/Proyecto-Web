@@ -123,11 +123,6 @@ export default function ErrorLogPage() {
     const cleanField = searchField.trim();
     const cleanValue = searchValue.trim();
 
-    if (!cleanField && cleanValue) {
-      showAlert("Seleccione un campo para realizar la búsqueda.", "warning");
-      return;
-    }
-
     if (cleanField && !cleanValue) {
       showAlert("Ingrese un valor para realizar la búsqueda.", "warning");
       return;

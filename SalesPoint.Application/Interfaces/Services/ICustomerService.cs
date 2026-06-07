@@ -9,10 +9,11 @@ public interface ICustomerService
         string field,
         string value,
         int pageNumber,
-        int pageSize);
+        int pageSize,
+        bool onlyActive);
 
     Task<CustomerDto?> GetByIdAsync(int id);
     Task<CustomerDto> CreateAsync(CreateCustomerRequest request);
     Task UpdateAsync(int id, UpdateCustomerRequest request);
-    Task DeleteAsync(int id);
+    Task<DeleteResultDto> DeleteAsync(int id);
 }

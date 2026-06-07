@@ -43,20 +43,29 @@ export default function ProductManagerPage() {
   const searchInputRef = useRef(null);
 
   const loadProducts = async (currentPage = page) => {
-    const params = {
-      pageNumber: currentPage,
-      pageSize: 8,
-    };
+    try {
+      const params = {
+        pageNumber: currentPage,
+        pageSize: 8,
+      };
 
-    if (searchField && searchValue.trim()) {
-      params.field = searchField;
-      params.value = searchValue.trim();
+      if (searchField && searchValue.trim()) {
+        params.field = searchField;
+        params.value = searchValue.trim();
+      }
+
+      const response = await api.get("/products/search", { params });
+
+      setProducts(response.data.items ?? []);
+      setTotalPages(Math.max(response.data.totalPages ?? 1, 1));
+    } catch (error) {
+      setProducts([]);
+      setTotalPages(1);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo cargar la lista de productos."),
+        "error"
+      );
     }
-
-    const response = await api.get("/products/search", { params });
-
-    setProducts(response.data.items ?? []);
-    setTotalPages(response.data.totalPages ?? 1);
   };
 
   useEffect(() => {
@@ -111,7 +120,7 @@ export default function ProductManagerPage() {
 
     if (name === "price") {
       const cleanPrice = value.replace(/[^0-9.]/g, "");
-      if (cleanPrice.split(".").length > 2) return;
+      if (!/^\d{0,6}(\.\d{0,2})?$/.test(cleanPrice)) return;
       setForm({ ...form, price: cleanPrice.slice(0, 10) });
       return;
     }
@@ -131,7 +140,7 @@ export default function ProductManagerPage() {
 
   const saveProduct = async () => {
     const request = {
-      name: form.name.trim().toUpperCase(),
+      name: form.name.trim().replace(/\s+/g, " ").toUpperCase(),
       price: Number(form.price),
       stock: Number(form.stock),
     };
@@ -154,6 +163,11 @@ export default function ProductManagerPage() {
         "El nombre del producto no puede superar los 80 caracteres.",
         "warning"
       );
+      return;
+    }
+
+    if (!/^[A-ZÁÉÍÓÚÜÑ0-9 .,\-/]+$/.test(request.name)) {
+      showAlert("El nombre del producto contiene caracteres no permitidos.", "warning");
       return;
     }
 
@@ -240,16 +254,31 @@ export default function ProductManagerPage() {
       "¿Seguro que desea eliminar este producto?",
       {
         title: "Eliminar producto",
-        confirmText: "Sí, eliminar",
+        confirmText: "Sí, continuar",
       }
     );
 
     if (!confirmed) return;
 
+    const finalConfirmation = await showConfirm(
+      "Si el producto tiene historial se desactivará para conservar la auditoría. Si no tiene historial se eliminará físicamente. ¿Desea continuar?",
+      {
+        title: "Confirmación final",
+        confirmText: "Confirmar",
+      }
+    );
+
+    if (!finalConfirmation) return;
+
     try {
-      await api.delete(`/products/${id}`);
-      showAlert("Producto eliminado correctamente.", "success");
-      loadProducts(page);
+      const response = await api.delete(`/products/${id}`);
+      showAlert(response.data?.message ?? "Producto procesado correctamente.", "success");
+
+      if (products.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        loadProducts(page);
+      }
     } catch (error) {
       console.error(error);
       showAlert(
@@ -341,7 +370,7 @@ export default function ProductManagerPage() {
               </button>
 
               <button className="table-action delete-button" onClick={() => deleteProduct(product.id)}>
-                🗑️ Eliminar
+                🗑️ Eliminar / desactivar
               </button>
             </>
           )}

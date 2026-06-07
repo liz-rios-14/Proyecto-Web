@@ -1,5 +1,6 @@
 using SalesPoint.Domain.Common;
 using SalesPoint.Domain.Exceptions;
+using System.Text.RegularExpressions;
 
 namespace SalesPoint.Domain.Entities;
 
@@ -25,13 +26,16 @@ public class Product : BaseEntity
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("El nombre del producto es obligatorio.");
 
-        var cleanName = name.Trim().ToUpperInvariant();
+        var cleanName = Regex.Replace(name.Trim(), @"\s+", " ").ToUpperInvariant();
 
         if (cleanName.Length < 2)
             throw new DomainException("El nombre del producto debe tener al menos 2 caracteres.");
 
         if (cleanName.Length > 80)
             throw new DomainException("El nombre del producto no puede superar los 80 caracteres.");
+
+        if (!Regex.IsMatch(cleanName, @"^[A-ZÁÉÍÓÚÜÑ0-9 .,\-/]+$"))
+            throw new DomainException("El nombre del producto contiene caracteres no permitidos.");
 
         Name = cleanName;
     }
@@ -44,7 +48,10 @@ public class Product : BaseEntity
         if (price > 999999.99m)
             throw new DomainException("El precio ingresado es demasiado alto.");
 
-        Price = decimal.Round(price, 2);
+        if (decimal.Round(price, 2) != price)
+            throw new DomainException("El precio debe tener máximo dos decimales.");
+
+        Price = price;
     }
 
     public void SetStock(int stock)
@@ -100,5 +107,12 @@ public class Product : BaseEntity
     public void Deactivate()
     {
         IsActive = false;
+    }
+
+    public void SoftDelete()
+    {
+        IsActive = false;
+        IsDeleted = true;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

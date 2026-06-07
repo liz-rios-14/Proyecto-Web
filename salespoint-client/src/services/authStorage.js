@@ -23,6 +23,18 @@ export function getAuthUser() {
   }
 }
 
+export function getAuthRole() {
+  const user = getAuthUser();
+  const rawRole =
+    user?.roleName ??
+    (typeof user?.role === "string" ? user.role : user?.role?.name) ??
+    "";
+
+  return String(rawRole)
+    .trim()
+    .toUpperCase();
+}
+
 export function clearAuthSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);

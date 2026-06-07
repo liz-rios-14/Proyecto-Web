@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Domain.Entities;
+using SalesPoint.Domain.Exceptions;
 using System.Data;
 
 namespace SalesPoint.Infrastructure.Persistence.Repositories;
@@ -21,7 +22,39 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
         return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await _context.Database
-                .BeginTransactionAsync(IsolationLevel.ReadCommitted);
+                .BeginTransactionAsync(IsolationLevel.Serializable);
+
+            foreach (var detail in invoice.Details)
+            {
+                var product = _context.Products.Local
+                    .FirstOrDefault(item => item.Id == detail.ProductId)
+                    ?? await _context.Products
+                        .FirstOrDefaultAsync(item => item.Id == detail.ProductId);
+
+                if (product is null)
+                    throw new DomainException(
+                        "El producto seleccionado ya no existe o no está disponible.");
+
+                await _context.Entry(product).ReloadAsync();
+
+                if (!product.IsActive || product.IsDeleted)
+                {
+                    throw new DomainException(
+                        $"El producto {product.Name} ya no está disponible. Retírelo del detalle o seleccione otro producto.");
+                }
+
+                if (product.Stock <= 0)
+                    throw new DomainException(
+                        $"El producto {product.Name} ya no tiene stock disponible.");
+
+                if (detail.Quantity > product.Stock)
+                {
+                    throw new InsufficientStockException(
+                        $"El stock disponible de {product.Name} cambió. Stock actual: {product.Stock}. Cantidad solicitada: {detail.Quantity}.");
+                }
+
+                product.DecreaseStock(detail.Quantity);
+            }
 
             var lastInvoiceId = await _context.Invoices
                 .OrderByDescending(item => item.Id)
@@ -35,8 +68,8 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
 
             foreach (var detail in invoice.Details)
             {
-                var product = await _context.Products
-                    .FirstAsync(item => item.Id == detail.ProductId);
+                var product = _context.Products.Local
+                    .First(item => item.Id == detail.ProductId);
 
                 await _context.StockMovements.AddAsync(new StockMovement(
                     detail.ProductId,

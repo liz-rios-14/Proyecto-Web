@@ -42,6 +42,9 @@ public sealed class SaleService : ISaleService
         var customer = await _customerRepository.GetByIdAsync(request.CustomerId)
             ?? throw new DomainException("El cliente seleccionado no existe.");
 
+        if (!customer.IsActive || customer.IsDeleted)
+            throw new DomainException("El cliente seleccionado está inactivo o eliminado.");
+
         var sale = new Invoice(request.CustomerId);
 
         await _unitOfWork.BeginTransactionAsync();
@@ -55,6 +58,9 @@ public sealed class SaleService : ISaleService
 
                 var product = await _productRepository.GetByIdAsync(detail.ProductId)
                     ?? throw new DomainException("Uno de los productos seleccionados no existe.");
+
+                if (!product.IsActive || product.IsDeleted)
+                    throw new DomainException($"El producto {product.Name} está inactivo.");
 
                 sale.AddDetail(product, detail.Quantity);
 

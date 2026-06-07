@@ -21,13 +21,14 @@ public sealed class ProductService : IProductService
         string field,
         string value,
         int pageNumber,
-        int pageSize)
+        int pageSize,
+        bool onlyAvailable)
     {
         pageNumber = pageNumber <= 0 ? 1 : pageNumber;
         pageSize = pageSize <= 0 ? 8 : pageSize;
 
-        var data = await _repository.SearchAsync(field, value, pageNumber, pageSize);
-        var totalItems = await _repository.CountAsync(field, value);
+        var data = await _repository.SearchAsync(field, value, pageNumber, pageSize, onlyAvailable);
+        var totalItems = await _repository.CountAsync(field, value, onlyAvailable);
 
         var items = data.Select(Map).ToList();
 
@@ -94,14 +95,30 @@ public sealed class ProductService : IProductService
         await _repository.UpdateAsync(product);
     }
 
-    public async Task DeleteAsync(int id)
+    public async Task<DeleteResultDto> DeleteAsync(int id)
     {
         var product = await _repository.GetByIdAsync(id)
             ?? throw new DomainException("Producto no encontrado.");
 
-        product.Deactivate();
+        if (await _repository.HasHistoryAsync(id))
+        {
+            product.SoftDelete();
+            await _repository.UpdateAsync(product);
 
-        await _repository.UpdateAsync(product);
+            return new DeleteResultDto
+            {
+                WasPhysical = false,
+                Message = "El producto tiene historial de ventas o inventario. Se marcó como inactivo para conservar la auditoría."
+            };
+        }
+
+        await _repository.DeleteAsync(product);
+
+        return new DeleteResultDto
+        {
+            WasPhysical = true,
+            Message = "Producto eliminado físicamente porque no tenía historial asociado."
+        };
     }
 
     private static ProductDto Map(Product product)

@@ -22,9 +22,11 @@ public class ProductsController : ControllerBase
         [FromQuery] string field = "",
         [FromQuery] string value = "",
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = 10,
+        [FromQuery] bool onlyAvailable = false)
     {
-        var result = await _service.SearchAsync(field, value, pageNumber, pageSize);
+        onlyAvailable = onlyAvailable || User.IsInRole("SELLER");
+        var result = await _service.SearchAsync(field, value, pageNumber, pageSize, onlyAvailable);
         return Ok(result);
     }
 
@@ -59,7 +61,6 @@ public class ProductsController : ControllerBase
     [Authorize(Roles = "ADMINISTRATOR")]
     public async Task<IActionResult> Delete(int id)
     {
-        await _service.DeleteAsync(id);
-        return Ok(new { message = "Producto eliminado correctamente." });
+        return Ok(await _service.DeleteAsync(id));
     }
 }
