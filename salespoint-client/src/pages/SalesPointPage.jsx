@@ -1008,7 +1008,8 @@ function SalesPointContent() {
       <div className="card">
         <h2>Detalle factura</h2>
 
-        <table>
+        <div className="table-wrapper">
+        <table className="sales-detail-table">
           <thead>
             <tr>
               <th className="number-cell">Id</th>
@@ -1069,6 +1070,7 @@ function SalesPointContent() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="card totals-card">

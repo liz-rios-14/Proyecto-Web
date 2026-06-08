@@ -4,6 +4,7 @@ import { login } from "../api/authApi";
 import { getApiErrorMessage } from "../api/apiError";
 import { saveAuthSession } from "../services/authStorage";
 import { useAppAlert } from "../components/AppAlert";
+import AuthLayout from "../components/AuthLayout";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -81,17 +82,11 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="login-page">
-      <section className="login-card">
-        <div className="login-brand">
-          <div className="logo-circle">🛒</div>
-
-          <div>
-            <h1>SalesPoint</h1>
-            <p>Punto de venta web</p>
-          </div>
-        </div>
-
+    <AuthLayout
+      eyebrow="Acceso seguro"
+      title="Bienvenido de nuevo"
+      subtitle="Ingrese sus credenciales para continuar al sistema."
+    >
         <form onSubmit={submit}>
           <label htmlFor="userNameOrEmail">
             Usuario o correo
@@ -144,7 +139,6 @@ export default function LoginPage() {
             ¿Olvidaste tu contraseña?
           </Link>
         </div>
-      </section>
-    </main>
+    </AuthLayout>
   );
 }

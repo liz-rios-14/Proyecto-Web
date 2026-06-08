@@ -1,5 +1,17 @@
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  Boxes,
+  CircleHelp,
+  FileClock,
+  Home,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingCart,
+  TriangleAlert,
+  UserCog,
+  Users,
+} from "lucide-react";
 import KeyboardHelp from "./KeyboardHelp";
 import ThemeToggle from "./ThemeToggle";
 import {
@@ -106,7 +118,9 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div>
         <div className="sidebar-logo">
-          <div className="logo-circle">🛒</div>
+          <div className="logo-circle">
+            <ShoppingCart size={23} />
+          </div>
 
           <div>
             <h2>SalesPoint</h2>
@@ -116,49 +130,49 @@ export default function Sidebar() {
 
         <nav className="sidebar-nav">
           <NavLink to="/" className="sidebar-link">
-            <span>🏠</span>
+            <Home size={19} />
             <span>Inicio</span>
           </NavLink>
 
           {isSeller && (
             <NavLink to="/sales" className="sidebar-link">
-              <span>🧾</span>
+              <ReceiptText size={19} />
               <span>Facturación</span>
             </NavLink>
           )}
 
           <NavLink to="/customers" className="sidebar-link">
-            <span>👥</span>
+            <Users size={19} />
             <span>Clientes</span>
           </NavLink>
 
           {isAdministrator && (
             <>
               <NavLink to="/products" className="sidebar-link">
-                <span>📦</span>
+                <Boxes size={19} />
                 <span>Productos</span>
               </NavLink>
             </>
           )}
 
           <NavLink to="/invoices" className="sidebar-link">
-            <span>📜</span>
+            <FileClock size={19} />
             <span>Historial</span>
           </NavLink>
           {isAdministrator && (
             <>
               <NavLink to="/users" className="sidebar-link">
-                <span>U</span>
+                <UserCog size={19} />
                 <span>Usuarios</span>
               </NavLink>
 
               <NavLink to="/roles" className="sidebar-link">
-                <span>R</span>
+                <ShieldCheck size={19} />
                 <span>Roles</span>
               </NavLink>
 
               <NavLink to="/error-logs" className="sidebar-link">
-                <span>!</span>
+                <TriangleAlert size={19} />
                 <span>Registro de errores</span>
               </NavLink>
             </>
@@ -167,11 +181,14 @@ export default function Sidebar() {
 
         <div className="shortcut-help-area">
           <button
+            type="button"
             className="shortcut-toggle"
             onClick={() => setShowShortcuts(!showShortcuts)}
             title="Mostrar atajos de teclado"
+            aria-expanded={showShortcuts}
+            aria-label={showShortcuts ? "Ocultar atajos" : "Mostrar atajos"}
           >
-            ?
+            <CircleHelp size={21} />
           </button>
 
           {showShortcuts && (

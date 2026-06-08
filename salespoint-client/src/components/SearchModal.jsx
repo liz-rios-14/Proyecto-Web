@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Pagination from "./Pagination";
+import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "./AppAlert";
 
 const isNumericColumn = (key) => {
   const normalizedKey = key.toLowerCase();
@@ -23,6 +25,7 @@ export default function SearchModal({
   columns,
   searchFields = [],
 }) {
+  const { showAlert } = useAppAlert();
   const [data, setData] = useState([]);
   const [selectedField, setSelectedField] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -67,6 +70,10 @@ export default function SearchModal({
       setData([]);
       setTotalPages(1);
       setSelectedIndex(0);
+      showAlert(
+        getApiErrorMessage(error, "No se pudieron cargar los resultados."),
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -201,7 +208,8 @@ export default function SearchModal({
           </button>
         </div>
 
-        <table className="modal-table">
+        <div className="table-wrapper modal-table-wrapper">
+          <table className="modal-table">
           <thead>
             <tr>
               {columns.map((column) => (
@@ -249,7 +257,8 @@ export default function SearchModal({
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
 
         <Pagination
           page={page}

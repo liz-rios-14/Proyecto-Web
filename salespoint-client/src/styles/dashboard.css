@@ -45,6 +45,7 @@
 .dashboard-session-card {
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .dashboard-badge {
@@ -72,6 +73,7 @@
   font-size: clamp(34px, 5vw, 52px);
   line-height: 1.05;
   letter-spacing: -1.2px;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-hero h1 span {
@@ -165,6 +167,9 @@
   margin-top: 10px;
   color: #dbeafe;
   font-weight: 800;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dashboard-online {
@@ -212,6 +217,7 @@
 }
 
 .dashboard-card {
+  min-width: 0;
   min-height: 220px;
   display: flex;
   flex-direction: column;
@@ -345,6 +351,14 @@
   .dashboard-section-title p {
     text-align: left;
   }
+}
+
+.dashboard-card h2,
+.dashboard-card p,
+.dashboard-card strong,
+.dashboard-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 700px) {

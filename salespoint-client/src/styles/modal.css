@@ -14,6 +14,7 @@
 /* ===== MODAL DE BÚSQUEDA ===== */
 .modal {
   width: min(900px, 100%);
+  max-width: 100%;
   max-height: 85vh;
   overflow: auto;
   background: #ffffff;
@@ -21,6 +22,10 @@
   padding: 24px;
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
   animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-table-wrapper {
+  margin-top: 10px;
 }
 
 .modal-header {
@@ -165,6 +170,7 @@
   padding: 38px;
   color: #0f172a;
   background: white;
+  overflow-x: auto;
 }
 
 .invoice-document h1 {

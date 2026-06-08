@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { resetPassword } from "../api/authApi";
 import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "../components/AppAlert";
+import AuthLayout from "../components/AuthLayout";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { showAlert } = useAppAlert();
 
   const [form, setForm] = useState({
     email: "",
@@ -29,47 +32,65 @@ export default function ResetPasswordPage() {
     setSuccess("");
 
     if (!form.email.trim()) {
-      setError("Ingrese su correo.");
+      const message = "Ingrese su correo.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      setError("Ingrese un correo válido.");
+      const message = "Ingrese un correo válido.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!form.resetToken.trim()) {
-      setError("Ingrese el token de recuperación.");
+      const message = "Ingrese el token de recuperación.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!form.newPassword.trim()) {
-      setError("Ingrese la nueva contraseña.");
+      const message = "Ingrese la nueva contraseña.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (form.newPassword.length < 8 || form.newPassword.length > 10) {
-      setError("La contraseña debe tener entre 8 y 10 caracteres.");
+      const message = "La contraseña debe tener entre 8 y 10 caracteres.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!/[A-Z]/.test(form.newPassword)) {
-      setError("La contraseña debe incluir al menos una mayúscula.");
+      const message = "La contraseña debe incluir al menos una mayúscula.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!/[a-z]/.test(form.newPassword)) {
-      setError("La contraseña debe incluir al menos una minúscula.");
+      const message = "La contraseña debe incluir al menos una minúscula.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!/[0-9]/.test(form.newPassword)) {
-      setError("La contraseña debe incluir al menos un número.");
+      const message = "La contraseña debe incluir al menos un número.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!/[^a-zA-Z0-9]/.test(form.newPassword)) {
-      setError("La contraseña debe incluir al menos un símbolo.");
+      const message = "La contraseña debe incluir al menos un símbolo.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
@@ -82,26 +103,28 @@ export default function ResetPasswordPage() {
         newPassword: form.newPassword,
       });
 
-      setSuccess("Contraseña actualizada correctamente.");
+      const message = "Contraseña actualizada correctamente.";
+      setSuccess(message);
+      showAlert(message, "success");
       setTimeout(() => navigate("/login", { replace: true }), 1200);
     } catch (err) {
-      setError(getApiErrorMessage(err, "No se pudo cambiar la contraseña."));
+      const message = getApiErrorMessage(
+        err,
+        "No se pudo cambiar la contraseña."
+      );
+      setError(message);
+      showAlert(message, "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="login-page">
-      <section className="login-card">
-        <div className="login-brand">
-          <div className="logo-circle">🛒</div>
-          <div>
-            <h1>Cambiar contraseña</h1>
-            <p>Use el token generado para crear una nueva contraseña.</p>
-          </div>
-        </div>
-
+    <AuthLayout
+      eyebrow="Seguridad de la cuenta"
+      title="Cambiar contraseña"
+      subtitle="Use el token generado y defina una contraseña segura."
+    >
         <form onSubmit={submit}>
           <label htmlFor="email">Correo</label>
           <input
@@ -151,7 +174,6 @@ export default function ResetPasswordPage() {
         <Link to="/login" className="auth-link">
           Volver al login
         </Link>
-      </section>
-    </main>
+    </AuthLayout>
   );
 }

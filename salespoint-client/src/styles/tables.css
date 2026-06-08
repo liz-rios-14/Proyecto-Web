@@ -3,11 +3,11 @@ table {
   border-collapse: collapse;
   margin-top: 14px;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 16px;
 }
 
 th {
-  background: #0f172a;
+  background: linear-gradient(180deg, #111c31, #0f172a);
   color: white;
   padding: 13px;
   text-align: left;
@@ -16,12 +16,13 @@ th {
 
 td {
   padding: 13px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e7edf5;
   text-align: left;
 }
 
 tr {
   background: #ffffff;
+  transition: background 0.16s ease;
 }
 
 tr:hover {
@@ -30,19 +31,48 @@ tr:hover {
 
 .table-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 9px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 999px;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 14px;
+  margin-top: 0;
   border-radius: 14px;
   overflow: hidden;
 }
 
+.data-table,
+.modal-table,
+.sales-detail-table {
+  min-width: 720px;
+}
+
+.data-table td,
+.modal-table td,
+.sales-detail-table td {
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+
 .data-table th {
-  background: #0f172a;
+  background: linear-gradient(180deg, #111c31, #0f172a);
   color: white;
   padding: 13px;
   text-align: left;
@@ -86,6 +116,7 @@ tr:hover {
   display: flex;
   gap: 8px;
   justify-content: flex-start;
+  min-width: max-content;
 }
 
 .pagination,
@@ -96,6 +127,9 @@ tr:hover {
   gap: 14px;
   margin-top: 18px;
   flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px;
 }
 
 .pagination-pages {
@@ -114,6 +148,7 @@ tr:hover {
   color: #0f172a;
   font-weight: 800;
   white-space: nowrap;
+  box-shadow: none;
 }
 
 .pagination-dots {
@@ -135,4 +170,9 @@ tr:hover {
 .pagination-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+body.dark-mode .table-wrapper {
+  border-color: #374151;
+  background: #1f2937;
 }

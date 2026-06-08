@@ -4,9 +4,7 @@ using SalesPoint.Application.DTOs.Auth;
 using SalesPoint.Application.Interfaces.Repositories;
 using SalesPoint.Application.Interfaces.Security;
 using SalesPoint.Application.Interfaces.Services;
-using SalesPoint.Application.Validators;
 using SalesPoint.Domain.Entities;
-using SalesPoint.Domain.Exceptions;
 
 namespace SalesPoint.Application.Services;
 
@@ -88,15 +86,18 @@ public sealed class AuthService : IAuthService
             });
     }
 
-    public async Task<ForgotPasswordResponseDto> ForgotPasswordAsync(ForgotPasswordRequestDto request)
+    public async Task<ForgotPasswordResultDto> ForgotPasswordAsync(ForgotPasswordRequestDto request)
     {
-        ApplicationValidator.Required(request.Email, "El correo");
+        if (request is null || string.IsNullOrWhiteSpace(request.Email))
+            return ForgotPasswordResultDto.Failure("Ingrese su correo.");
 
-        var user = await _userRepository.GetByEmailAsync(request.Email)
-            ?? throw new DomainException("No existe un usuario con ese correo.");
+        var user = await _userRepository.GetByEmailAsync(request.Email);
 
-        if (!user.IsActive)
-            throw new DomainException("El usuario esta inactivo.");
+        if (user is null)
+            return ForgotPasswordResultDto.Failure("No existe un usuario con ese correo.");
+
+        if (!user.IsActive || user.IsDeleted)
+            return ForgotPasswordResultDto.Failure("El usuario se encuentra inactivo.");
 
         var resetToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var resetTokenHash = UserService.Hash(resetToken);
@@ -105,46 +106,73 @@ public sealed class AuthService : IAuthService
 
         await _userRepository.UpdateAsync(user);
 
-        return new ForgotPasswordResponseDto
-        {
-            ResetToken = resetToken
-        };
+        return ForgotPasswordResultDto.Success(
+            new ForgotPasswordResponseDto
+            {
+                ResetToken = resetToken
+            });
     }
 
-    public async Task ResetPasswordAsync(ResetPasswordRequestDto request)
+    public async Task<ResetPasswordResultDto> ResetPasswordAsync(ResetPasswordRequestDto request)
     {
-        ApplicationValidator.Required(request.Email, "El correo");
-        ApplicationValidator.Required(request.ResetToken, "El token");
-        ApplicationValidator.Required(request.NewPassword, "La nueva contrasena");
+        if (request is null)
+            return ResetPasswordResultDto.Failure(
+                "Los datos para cambiar la contraseña son obligatorios.");
 
-        ValidatePasswordPolicy(request.NewPassword);
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return ResetPasswordResultDto.Failure("Ingrese su correo.");
 
-        var user = await _userRepository.GetByEmailAsync(request.Email)
-            ?? throw new DomainException("Usuario no encontrado.");
+        if (string.IsNullOrWhiteSpace(request.ResetToken))
+            return ResetPasswordResultDto.Failure(
+                "Ingrese el token de recuperación.");
 
-        if (!user.IsActive)
-            throw new DomainException("El usuario esta inactivo.");
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+            return ResetPasswordResultDto.Failure("Ingrese la nueva contraseña.");
 
-        if (user.PasswordResetTokenHash is null || user.PasswordResetTokenExpiresAt is null)
-            throw new DomainException("No existe una solicitud de recuperacion activa.");
+        var passwordValidationMessage = GetPasswordValidationMessage(
+            request.NewPassword);
+
+        if (passwordValidationMessage is not null)
+            return ResetPasswordResultDto.Failure(passwordValidationMessage);
+
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+
+        if (user is null)
+            return ResetPasswordResultDto.Failure(
+                "No existe un usuario con ese correo.");
+
+        if (!user.IsActive || user.IsDeleted)
+            return ResetPasswordResultDto.Failure(
+                "El usuario se encuentra inactivo.");
+
+        if (user.PasswordResetTokenHash is null ||
+            user.PasswordResetTokenExpiresAt is null)
+        {
+            return ResetPasswordResultDto.Failure(
+                "No existe una solicitud de recuperación activa.");
+        }
 
         if (user.PasswordResetTokenExpiresAt < DateTime.UtcNow)
-            throw new DomainException("El token de recuperacion expiro.");
+            return ResetPasswordResultDto.Failure(
+                "El token de recuperación expiró.");
 
         var tokenHash = UserService.Hash(request.ResetToken);
 
         if (tokenHash != user.PasswordResetTokenHash)
-            throw new DomainException("Token de recuperacion invalido.");
+            return ResetPasswordResultDto.Failure(
+                "El token de recuperación no es válido.");
 
         var newPasswordHash = UserService.Hash(request.NewPassword);
 
         if (newPasswordHash == user.PasswordHash)
-            throw new DomainException("No puede usar la contrasena actual.");
+            return ResetPasswordResultDto.Failure(
+                "No puede usar la contraseña actual.");
 
         var previousHashes = await _userRepository.GetPasswordHistoryHashesAsync(user.Id);
 
         if (previousHashes.Contains(newPasswordHash))
-            throw new DomainException("No puede usar una contrasena anterior.");
+            return ResetPasswordResultDto.Failure(
+                "No puede usar una contraseña anterior.");
 
         await _userRepository.AddPasswordHistoryAsync(
             new PasswordHistory(user.Id, user.PasswordHash)
@@ -154,23 +182,27 @@ public sealed class AuthService : IAuthService
         user.ClearPasswordResetToken();
 
         await _userRepository.UpdateAsync(user);
+
+        return ResetPasswordResultDto.Success();
     }
 
-    private static void ValidatePasswordPolicy(string password)
+    private static string? GetPasswordValidationMessage(string password)
     {
         if (password.Length < 8 || password.Length > 10)
-            throw new DomainException("La contrasena debe tener minimo 8 y maximo 10 caracteres.");
+            return "La contraseña debe tener mínimo 8 y máximo 10 caracteres.";
 
         if (!Regex.IsMatch(password, "[A-Z]"))
-            throw new DomainException("La contrasena debe tener al menos una mayuscula.");
+            return "La contraseña debe tener al menos una mayúscula.";
 
         if (!Regex.IsMatch(password, "[a-z]"))
-            throw new DomainException("La contrasena debe tener al menos una minuscula.");
+            return "La contraseña debe tener al menos una minúscula.";
 
         if (!Regex.IsMatch(password, "[0-9]"))
-            throw new DomainException("La contrasena debe tener al menos un numero.");
+            return "La contraseña debe tener al menos un número.";
 
         if (!Regex.IsMatch(password, "[^a-zA-Z0-9]"))
-            throw new DomainException("La contrasena debe tener al menos un caracter especial.");
+            return "La contraseña debe tener al menos un carácter especial.";
+
+        return null;
     }
 }

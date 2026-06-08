@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { forgotPassword } from "../api/authApi";
 import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "../components/AppAlert";
+import AuthLayout from "../components/AuthLayout";
 
 export default function ForgotPasswordPage() {
+  const { showAlert } = useAppAlert();
   const [email, setEmail] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [error, setError] = useState("");
@@ -15,12 +18,16 @@ export default function ForgotPasswordPage() {
     setResetToken("");
 
     if (!email.trim()) {
-      setError("Ingrese su correo.");
+      const message = "Ingrese su correo.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Ingrese un correo válido.");
+      const message = "Ingrese un correo válido.";
+      setError(message);
+      showAlert(message, "warning");
       return;
     }
 
@@ -28,24 +35,25 @@ export default function ForgotPasswordPage() {
       setLoading(true);
       const result = await forgotPassword({ email: email.trim() });
       setResetToken(result.resetToken);
+      showAlert("Token de recuperación generado correctamente.", "success");
     } catch (err) {
-      setError(getApiErrorMessage(err, "No se pudo generar el token."));
+      const message = getApiErrorMessage(
+        err,
+        "No se pudo generar el token."
+      );
+      setError(message);
+      showAlert(message, "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="login-page">
-      <section className="login-card">
-        <div className="login-brand">
-          <div className="logo-circle">🛒</div>
-          <div>
-            <h1>Recuperar contraseña</h1>
-            <p>Genera un token temporal de recuperación.</p>
-          </div>
-        </div>
-
+    <AuthLayout
+      eyebrow="Recuperación de acceso"
+      title="Recuperar contraseña"
+      subtitle="Genere un token temporal usando el correo registrado."
+    >
         <form onSubmit={submit}>
           <label htmlFor="email">Correo registrado</label>
           <input
@@ -77,7 +85,6 @@ export default function ForgotPasswordPage() {
         <Link to="/login" className="auth-link">
           Volver al login
         </Link>
-      </section>
-    </main>
+    </AuthLayout>
   );
 }

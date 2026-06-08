@@ -31,14 +31,21 @@ public class AuthController : ControllerBase
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
     {
-        return Ok(await _service.ForgotPasswordAsync(request));
+        var result = await _service.ForgotPasswordAsync(request);
+
+        return result.IsSuccess
+            ? Ok(result.Data)
+            : BadRequest(new { message = result.Message });
     }
 
     [AllowAnonymous]
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
     {
-        await _service.ResetPasswordAsync(request);
-        return Ok(new { message = "Contraseña actualizada correctamente." });
+        var result = await _service.ResetPasswordAsync(request);
+
+        return result.IsSuccess
+            ? Ok(new { message = "Contraseña actualizada correctamente." })
+            : BadRequest(new { message = result.Message });
     }
 }
