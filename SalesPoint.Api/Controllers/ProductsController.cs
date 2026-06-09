@@ -63,4 +63,18 @@ public class ProductsController : ControllerBase
     {
         return Ok(await _service.DeleteAsync(id));
     }
+
+    [HttpPost("{id}/deactivate")]
+    [Authorize(Roles = "ADMINISTRATOR")]
+    public async Task<IActionResult> Deactivate(int id)
+    {
+        return Ok(await _service.DeactivateAsync(id));
+    }
+
+    [HttpPost("{id}/activate")]
+    [Authorize(Roles = "ADMINISTRATOR")]
+    public async Task<IActionResult> Activate(int id)
+    {
+        return Ok(await _service.ActivateAsync(id));
+    }
 }

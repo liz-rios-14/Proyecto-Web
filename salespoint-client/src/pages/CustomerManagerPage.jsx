@@ -22,19 +22,20 @@ const customerColumns = [
   { key: "id", label: "Id", type: "number" },
   { key: "firstName", label: "Nombre" },
   { key: "lastName", label: "Apellido" },
-  { key: "cedula", label: "Cédula" },
-  { key: "phone", label: "Teléfono" },
-  { key: "address", label: "Dirección" },
+  { key: "cedula", label: "Cedula" },
+  { key: "phone", label: "Telefono" },
+  { key: "address", label: "Direccion" },
   { key: "email", label: "Correo" },
+  { key: "statusLabel", label: "Estado" },
 ];
 
 const customerSearchFields = [
   { key: "id", label: "Id", type: "number" },
   { key: "firstName", label: "Nombre" },
   { key: "lastName", label: "Apellido" },
-  { key: "cedula", label: "Cédula", type: "number" },
-  { key: "phone", label: "Teléfono" },
-  { key: "address", label: "Dirección" },
+  { key: "cedula", label: "Cedula", type: "number" },
+  { key: "phone", label: "Telefono" },
+  { key: "address", label: "Direccion" },
   { key: "email", label: "Correo" },
 ];
 
@@ -47,6 +48,7 @@ export default function CustomerManagerPage() {
   const [searchField, setSearchField] = useState("firstName");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   const saveButtonRef = useRef(null);
@@ -58,7 +60,7 @@ export default function CustomerManagerPage() {
     try {
       const params = {
         pageNumber: currentPage,
-        pageSize: 8,
+        pageSize,
       };
 
       if (searchField && searchValue.trim()) {
@@ -82,7 +84,7 @@ export default function CustomerManagerPage() {
 
   useEffect(() => {
     loadCustomers(page);
-  }, [page]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -116,7 +118,7 @@ export default function CustomerManagerPage() {
       setForm({
         ...form,
         [name]: value
-          .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "")
+          .replace(/[^\p{L}\s]/gu, "")
           .toUpperCase()
           .slice(0, 40),
       });
@@ -176,38 +178,38 @@ export default function CustomerManagerPage() {
       return;
     }
 
-    if (!/^[A-ZÁÉÍÓÚÑ\s]+$/.test(request.firstName)) {
+    if (!/^[\p{L}\s]+$/u.test(request.firstName)) {
       showAlert("El nombre solo debe contener letras.", "warning");
       return;
     }
 
-    if (!/^[A-ZÁÉÍÓÚÑ\s]+$/.test(request.lastName)) {
+    if (!/^[\p{L}\s]+$/u.test(request.lastName)) {
       showAlert("El apellido solo debe contener letras.", "warning");
       return;
     }
 
     if (!isValidEcuadorianCedula(request.cedula)) {
-      showAlert("Ingrese una cédula ecuatoriana válida.", "warning");
+      showAlert("Ingrese una cedula ecuatoriana valida.", "warning");
       return;
     }
 
     if (!/^09\d{8}$/.test(request.phone)) {
-      showAlert("Ingrese un número de teléfono válido.", "warning");
+      showAlert("Ingrese un numero de telefono valido.", "warning");
       return;
     }
 
     if (request.address.length < 5 || request.address.length > 150) {
-      showAlert("La dirección debe tener entre 5 y 150 caracteres.", "warning");
+      showAlert("La direccion debe tener entre 5 y 150 caracteres.", "warning");
       return;
     }
 
-    if (!/^[A-ZÁÉÍÓÚÜÑ0-9 .,#-]+$/.test(request.address)) {
-      showAlert("La dirección contiene caracteres no permitidos.", "warning");
+    if (!/^[\p{L}0-9 .,#-]+$/u.test(request.address)) {
+      showAlert("La direccion contiene caracteres no permitidos.", "warning");
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(request.email)) {
-      showAlert("Ingrese un correo válido.", "warning");
+      showAlert("Ingrese un correo valido.", "warning");
       return;
     }
 
@@ -256,8 +258,8 @@ export default function CustomerManagerPage() {
       if (duplicateCedula) {
         showAlert(
           editingId
-            ? "Ya existe otro cliente registrado con esta cédula."
-            : "Ya existe un cliente registrado con esta cédula.",
+            ? "Ya existe otro cliente registrado con esta cedula."
+            : "Ya existe un cliente registrado con esta cedula.",
           "warning"
         );
         return;
@@ -297,20 +299,20 @@ export default function CustomerManagerPage() {
 
   const deleteCustomer = async (id) => {
     const confirmed = await showConfirm(
-      "¿Seguro que desea eliminar este cliente?",
+      "Seguro que desea eliminar fisicamente este cliente?",
       {
         title: "Eliminar cliente",
-        confirmText: "Sí, continuar",
+        confirmText: "Si, eliminar",
       }
     );
 
     if (!confirmed) return;
 
     const finalConfirmation = await showConfirm(
-      "Si el cliente tiene historial se desactivará para conservar la auditoría. Si no tiene historial se eliminará físicamente. ¿Desea continuar?",
+      "La eliminacion fisica solo se permite si el cliente no tiene historial. Si tiene ventas, use Desactivar.",
       {
-        title: "Confirmación final",
-        confirmText: "Confirmar",
+        title: "Confirmacion final",
+        confirmText: "Eliminar fisicamente",
       }
     );
 
@@ -318,7 +320,7 @@ export default function CustomerManagerPage() {
 
     try {
       const response = await api.delete(`/customers/${id}`);
-      showAlert(response.data?.message ?? "Cliente procesado correctamente.", "success");
+      showAlert(response.data?.message ?? "Cliente eliminado correctamente.", "success");
 
       if (customers.length === 1 && page > 1) {
         setPage(page - 1);
@@ -334,6 +336,43 @@ export default function CustomerManagerPage() {
     }
   };
 
+  const deactivateCustomer = async (id) => {
+    const confirmed = await showConfirm(
+      "El cliente quedara inactivo pero seguira visible en la tabla. Desea continuar?",
+      {
+        title: "Desactivar cliente",
+        confirmText: "Desactivar",
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await api.post(`/customers/${id}/deactivate`);
+      showAlert(response.data?.message ?? "Cliente desactivado correctamente.", "success");
+      loadCustomers(page);
+    } catch (error) {
+      console.error(error);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo desactivar el cliente."),
+        "error"
+      );
+    }
+  };
+
+  const activateCustomer = async (id) => {
+    try {
+      const response = await api.post(`/customers/${id}/activate`);
+      showAlert(response.data?.message ?? "Cliente activado correctamente.", "success");
+      loadCustomers(page);
+    } catch (error) {
+      console.error(error);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo activar el cliente."),
+        "error"
+      );
+    }
+  };
   useKeyboardShortcuts(
     [
       { ctrl: true, key: "b", action: () => searchInputRef.current?.focus() },
@@ -356,19 +395,19 @@ export default function CustomerManagerPage() {
         <div className="form-grid">
           <input name="firstName" placeholder="Nombre" maxLength="40" value={form.firstName} onChange={handleChange} />
           <input name="lastName" placeholder="Apellido" maxLength="40" value={form.lastName} onChange={handleChange} />
-          <input name="cedula" placeholder="Cédula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
-          <input name="phone" placeholder="Teléfono" inputMode="numeric" maxLength="10" value={form.phone} onChange={handleChange} />
-          <input name="address" placeholder="Dirección" maxLength="150" value={form.address} onChange={handleChange} />
-          <input name="email" placeholder="Correo" type="email" maxLength="120" value={form.email} onChange={handleChange} />
+          <input name="cedula" placeholder="Cedula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
+          <input name="phone" placeholder="Telefono" inputMode="numeric" maxLength="10" value={form.phone} onChange={handleChange} />
+          <input name="address" placeholder="Direccion" maxLength="150" value={form.address} onChange={handleChange} />
+          <input name="cedula" placeholder="Cedula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
         </div>
 
         <div className="actions-row">
           <button ref={saveButtonRef} onClick={saveCustomer}>
-            {editingId ? "💾 Actualizar" : "💾 Guardar"}
+            {editingId ? "Actualizar" : "Guardar"}
           </button>
 
           <button ref={cleanButtonRef} className="secondary-button" onClick={resetForm}>
-            🧹 Limpiar
+            Limpiar
           </button>
         </div>
       </div>
@@ -393,14 +432,14 @@ export default function CustomerManagerPage() {
 
           <input
             ref={searchInputRef}
-            placeholder="Ingrese valor de búsqueda"
+            placeholder="Ingrese valor de busqueda"
             type={searchField === "id" || searchField === "cedula" ? "number" : "text"}
             value={searchValue}
             onChange={handleSearchValueChange}
           />
 
           <button ref={searchButtonRef} onClick={() => loadCustomers(1)}>
-            🔍 Buscar
+            Buscar
           </button>
         </div>
       </div>
@@ -410,24 +449,56 @@ export default function CustomerManagerPage() {
 
         <DataTable
           columns={customerColumns}
-          data={customers}
+          data={customers.map((customer) => ({
+            ...customer,
+            statusLabel: customer.isActive ? "ACTIVO" : "INACTIVO",
+          }))}
           emptyMessage="Sin clientes registrados"
           actions={(customer) => (
             <>
               {isAdministrator && (
                 <>
                   <button className="table-action edit-button" onClick={() => editCustomer(customer)}>
-                    ✏️ Editar
+                    Editar
                   </button>
 
+                  {customer.isActive ? (
+                    <button className="table-action secondary-button" onClick={() => deactivateCustomer(customer.id)}>
+                      Desactivar
+                    </button>
+                  ) : (
+                    <button className="table-action invoice-button" onClick={() => activateCustomer(customer.id)}>
+                      Activar
+                    </button>
+                  )}
+
                   <button className="table-action delete-button" onClick={() => deleteCustomer(customer.id)}>
-                    🗑️ Eliminar / desactivar
+                    Eliminar
                   </button>
                 </>
               )}
             </>
           )}
         />
+
+        <div className="actions-row">
+          <label className="page-size-control">
+            Registros por pagina
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {[10, 15, 20, 30].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <Pagination
           page={page}
@@ -440,3 +511,4 @@ export default function CustomerManagerPage() {
     </Layout>
   );
 }
+

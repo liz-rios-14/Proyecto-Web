@@ -159,6 +159,20 @@ public class Customer : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void Activate()
+    {
+        IsActive = true;
+        IsDeleted = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        IsDeleted = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     private static string NormalizeSpaces(string value)
     {
         return Regex.Replace(value.Trim(), @"\s+", " ");

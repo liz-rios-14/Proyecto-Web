@@ -22,4 +22,11 @@ public sealed class ErrorLogsController : ControllerBase
     {
         return Ok(await _service.SearchAsync(query));
     }
+
+    [HttpPost]
+    [Authorize(Roles = "ADMINISTRATOR,SELLER")]
+    public async Task<IActionResult> Create([FromBody] CreateErrorLogRequest request)
+    {
+        return Ok(await _service.CreateAsync(request));
+    }
 }

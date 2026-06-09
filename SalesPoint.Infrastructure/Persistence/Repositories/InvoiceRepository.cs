@@ -169,4 +169,35 @@ public sealed class InvoiceRepository : IInvoiceRepository, ISaleRepository
                 invoice.InvoiceNumber.ToUpper() == cleanInvoiceNumber &&
                 (!sellerId.HasValue || invoice.SellerId == sellerId.Value));
     }
+
+    public async Task<AuditInvoiceHistory> CreateAuditHistoryAsync(
+        AuditInvoiceHistory history)
+    {
+        await _context.AuditInvoiceHistories.AddAsync(history);
+        await _context.SaveChangesAsync();
+
+        return history;
+    }
+
+    public async Task<List<AuditInvoiceHistory>> GetAuditHistoryAsync(
+        int pageNumber,
+        int pageSize)
+    {
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 10 : pageSize;
+
+        return await _context.AuditInvoiceHistories
+            .AsNoTracking()
+            .Where(history => !history.IsDeleted)
+            .OrderByDescending(history => history.GeneratedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountAuditHistoryAsync()
+    {
+        return await _context.AuditInvoiceHistories
+            .CountAsync(history => !history.IsDeleted);
+    }
 }

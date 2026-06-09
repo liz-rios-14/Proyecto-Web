@@ -49,7 +49,7 @@ export default function Pagination({
         disabled={page === 1}
         onClick={onPrevious}
       >
-        ← Anterior
+        Anterior
       </button>
 
       <div className="pagination-pages">
@@ -77,7 +77,7 @@ export default function Pagination({
         disabled={page === totalPages}
         onClick={onNext}
       >
-        Siguiente →
+        Siguiente
       </button>
     </div>
   );

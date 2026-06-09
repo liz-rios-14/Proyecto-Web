@@ -16,6 +16,34 @@ const isNumericColumn = (key) => {
   );
 };
 
+const getColumnClass = (column) => {
+  const key = column.key.toLowerCase();
+
+  if (key === "id") return "col-id";
+  if (key.includes("status") || key.includes("estado")) return "col-status";
+  if (key.includes("access") || key.includes("acceso")) return "col-access";
+  if (key.includes("alert") || key.includes("aviso")) return "col-alert";
+  if (key.includes("email") || key.includes("correo")) return "col-email";
+  if (key.includes("name") || key.includes("nombre")) return "col-name";
+  if (isNumericColumn(column.key)) return "col-number";
+
+  return "";
+};
+
+const getColumnWidth = (column) => {
+  const key = column.key.toLowerCase();
+
+  if (key === "id") return "64px";
+  if (key.includes("status") || key.includes("estado")) return "110px";
+  if (key.includes("access") || key.includes("acceso")) return "130px";
+  if (key.includes("alert") || key.includes("aviso")) return "150px";
+  if (key.includes("email") || key.includes("correo")) return "230px";
+  if (key.includes("name") || key.includes("nombre")) return "220px";
+  if (isNumericColumn(column.key)) return "100px";
+
+  return "160px";
+};
+
 export default function SearchModal({
   isOpen,
   title,
@@ -30,6 +58,7 @@ export default function SearchModal({
   const [selectedField, setSelectedField] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -49,11 +78,11 @@ export default function SearchModal({
     availableFields.find((field) => field.key === selectedField) ||
     availableFields[0];
 
-  const loadData = async (field, value, currentPage) => {
+  const loadData = async (field, value, currentPage, currentPageSize = pageSize) => {
     try {
       setIsLoading(true);
 
-      const result = await fetchData(field, value.trim(), currentPage);
+      const result = await fetchData(field, value.trim(), currentPage, currentPageSize);
 
       const items = Array.isArray(result) ? result : result.items ?? [];
 
@@ -111,7 +140,7 @@ export default function SearchModal({
     if (!isOpen || !selectedField) return;
 
     loadData(selectedField, searchValue, page);
-  }, [page]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -204,18 +233,43 @@ export default function SearchModal({
           />
 
           <button onClick={() => loadData(selectedField, searchValue, 1)}>
-            🔍 Buscar
+            Buscar
           </button>
+
+          <label className="page-size-control modal-page-size-control">
+            Registros por pagina
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                const nextPageSize = Number(event.target.value);
+                setPageSize(nextPageSize);
+                setPage(1);
+                loadData(selectedField, searchValue, 1, nextPageSize);
+              }}
+            >
+              {[5, 10, 15, 20, 30].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="table-wrapper modal-table-wrapper">
           <table className="modal-table">
+          <colgroup>
+            {columns.map((column) => (
+              <col key={column.key} style={{ width: getColumnWidth(column) }} />
+            ))}
+          </colgroup>
+
           <thead>
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={isNumericColumn(column.key) ? "number-column" : ""}
+                  className={`${isNumericColumn(column.key) ? "number-column" : ""} ${getColumnClass(column)}`}
                 >
                   {column.label}
                 </th>
@@ -245,7 +299,7 @@ export default function SearchModal({
                     <td
                       key={column.key}
                       className={
-                        isNumericColumn(column.key) ? "number-column" : ""
+                        `${isNumericColumn(column.key) ? "number-column" : ""} ${getColumnClass(column)}`
                       }
                     >
                       {column.type === "money"

@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import { installFrontendErrorReporting } from "./api/errorReporter";
 
 import "./styles/global.css";
 import "./styles/forms.css";
@@ -17,6 +18,8 @@ import "./styles/theme.css";
 import "./styles/print.css";
 
 import { AppAlertProvider } from "./components/AppAlert";
+
+installFrontendErrorReporting();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

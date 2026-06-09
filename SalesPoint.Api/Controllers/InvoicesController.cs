@@ -53,8 +53,17 @@ public class InvoicesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("audit-history")]
+    [Authorize(Roles = "ADMINISTRATOR")]
+    public async Task<IActionResult> GetAuditHistory(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        return Ok(await _invoiceService.GetAuditHistoryAsync(pageNumber, pageSize));
+    }
+
     [HttpPost]
-    [Authorize(Roles = "SELLER")]
+    [Authorize(Roles = "ADMINISTRATOR,SELLER")]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest request)
     {
         var result = await _invoiceService.CreateAsync(request);

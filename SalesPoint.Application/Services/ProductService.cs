@@ -101,26 +101,46 @@ public sealed class ProductService : IProductService
             ?? throw new DomainException("Producto no encontrado.");
 
         if (await _repository.HasHistoryAsync(id))
-        {
-            product.SoftDelete();
-            await _repository.UpdateAsync(product);
-
-            return new DeleteResultDto
-            {
-                WasPhysical = false,
-                Message = "El producto tiene historial de ventas o inventario. Se marcó como inactivo para conservar la auditoría."
-            };
-        }
+            throw new DomainException("No se puede eliminar fisicamente el producto porque tiene historial de ventas o inventario. Use Desactivar para conservar la auditoria.");
 
         await _repository.DeleteAsync(product);
 
         return new DeleteResultDto
         {
             WasPhysical = true,
-            Message = "Producto eliminado físicamente porque no tenía historial asociado."
+            Message = "Producto eliminado fisicamente porque no tenia historial asociado."
         };
     }
 
+    public async Task<DeleteResultDto> DeactivateAsync(int id)
+    {
+        var product = await _repository.GetByIdAsync(id)
+            ?? throw new DomainException("Producto no encontrado.");
+
+        product.Deactivate();
+        await _repository.UpdateAsync(product);
+
+        return new DeleteResultDto
+        {
+            WasPhysical = false,
+            Message = "Producto desactivado correctamente. Permanecera visible para auditoria."
+        };
+    }
+
+    public async Task<DeleteResultDto> ActivateAsync(int id)
+    {
+        var product = await _repository.GetByIdAsync(id)
+            ?? throw new DomainException("Producto no encontrado.");
+
+        product.Activate();
+        await _repository.UpdateAsync(product);
+
+        return new DeleteResultDto
+        {
+            WasPhysical = false,
+            Message = "Producto activado correctamente."
+        };
+    }
     private static ProductDto Map(Product product)
     {
         return new ProductDto
@@ -133,3 +153,4 @@ public sealed class ProductService : IProductService
         };
     }
 }
+

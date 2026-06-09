@@ -12,9 +12,37 @@ const isNumericColumn = (key) => {
   );
 };
 
+const getColumnClass = (column) => {
+  const key = column.key.toLowerCase();
+
+  if (key === "id") return "col-id";
+  if (key.includes("status") || key.includes("estado")) return "col-status";
+  if (key.includes("access") || key.includes("acceso")) return "col-access";
+  if (key.includes("alert") || key.includes("aviso")) return "col-alert";
+  if (key.includes("email") || key.includes("correo")) return "col-email";
+  if (key.includes("name") || key.includes("nombre")) return "col-name";
+  if (isNumericColumn(column.key)) return "col-number";
+
+  return "";
+};
+
+const getColumnWidth = (column) => {
+  const key = column.key.toLowerCase();
+
+  if (key === "id") return "64px";
+  if (key.includes("status") || key.includes("estado")) return "110px";
+  if (key.includes("access") || key.includes("acceso")) return "130px";
+  if (key.includes("alert") || key.includes("aviso")) return "150px";
+  if (key.includes("email") || key.includes("correo")) return "230px";
+  if (key.includes("name") || key.includes("nombre")) return "220px";
+  if (isNumericColumn(column.key)) return "100px";
+
+  return "160px";
+};
+
 const formatValue = (value, column) => {
   if (value === null || value === undefined || value === "") {
-    return "—";
+    return "-";
   }
 
   if (column.type === "money") {
@@ -39,12 +67,19 @@ export default function DataTable({
   return (
     <div className="table-wrapper">
       <table className="data-table">
+        <colgroup>
+          {columns.map((column) => (
+            <col key={column.key} style={{ width: getColumnWidth(column) }} />
+          ))}
+          {actions && <col style={{ width: "280px" }} />}
+        </colgroup>
+
         <thead>
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={isNumericColumn(column.key) ? "number-cell" : ""}
+                className={`${isNumericColumn(column.key) ? "number-cell" : ""} ${getColumnClass(column)}`}
               >
                 {column.label}
               </th>
@@ -89,9 +124,11 @@ export default function DataTable({
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className={isNumericColumn(column.key) ? "number-cell" : ""}
+                    className={`${isNumericColumn(column.key) ? "number-cell" : ""} ${getColumnClass(column)}`}
                   >
-                    {formatValue(item[column.key], column)}
+                    <span className="cell-content">
+                      {formatValue(item[column.key], column)}
+                    </span>
                   </td>
                 ))}
 

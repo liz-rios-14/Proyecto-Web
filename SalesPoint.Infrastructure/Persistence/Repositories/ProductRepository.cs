@@ -115,13 +115,16 @@ public sealed class ProductRepository : IProductRepository
             return query.Where(product => product.Id == id);
 
         if (cleanField == "name")
-            return query.Where(product => product.Name.Contains(cleanValue.ToUpperInvariant()));
+            return query.Where(product => product.Name.StartsWith(cleanValue.ToUpperInvariant()));
 
-        if (cleanField == "price" && decimal.TryParse(cleanValue, out var price))
-            return query.Where(product => product.Price == price);
+        if (cleanField == "price")
+        {
+            var normalizedPrice = cleanValue.Replace(",", ".");
+            return query.Where(product => product.Price.ToString().StartsWith(normalizedPrice));
+        }
 
-        if (cleanField == "stock" && int.TryParse(cleanValue, out var stock))
-            return query.Where(product => product.Stock == stock);
+        if (cleanField == "stock")
+            return query.Where(product => product.Stock.ToString().StartsWith(cleanValue));
 
         return query;
     }

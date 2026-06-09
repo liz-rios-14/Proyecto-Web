@@ -20,3 +20,14 @@ export const reconstructInvoiceByNumber = async (invoiceNumber) => {
   const response = await api.get(`/invoices/audit/${invoiceNumber}`);
   return response.data;
 };
+
+export const getAuditInvoiceHistory = async (pageNumber = 1, pageSize = 10) => {
+  const response = await api.get("/invoices/audit-history", {
+    params: {
+      pageNumber,
+      pageSize,
+    },
+  });
+
+  return response.data;
+};

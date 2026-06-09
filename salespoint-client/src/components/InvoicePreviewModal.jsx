@@ -12,6 +12,7 @@ export default function InvoicePreviewModal({
   iva = 0,
   total = 0,
   auditComparison = [],
+  isAuditReconstruction = false,
   onBack,
   onCloseAndClean,
   onCreateNewSale,
@@ -25,7 +26,11 @@ export default function InvoicePreviewModal({
     ? invoiceNumber
     : "Se generará al finalizar";
 
-  const hasChanges = auditComparison && auditComparison.length > 0;
+  const hasChanges =
+    isAuditReconstruction && auditComparison && auditComparison.length > 0;
+  const originLabel = isAuditReconstruction
+    ? "Reconstruccion por auditoria"
+    : "Punto de venta";
 
   const safeValue = (value, fallback = "No registrado") => {
     if (value === null || value === undefined || value === "") return fallback;
@@ -210,7 +215,7 @@ export default function InvoicePreviewModal({
             <div class="header">
               <h1>Factura</h1>
               <p class="subtitle">Factura N° ${visualInvoiceNumber}</p>
-              <p class="audit-note">Representación generada para reconstrucción y auditoría de venta</p>
+              ${isAuditReconstruction ? '<p class="audit-note">Representacion generada para reconstruccion y auditoria de venta</p>' : ""}
             </div>
 
             <div class="audit-grid">
@@ -230,7 +235,7 @@ export default function InvoicePreviewModal({
                 <p><strong>Usuario:</strong> <span>${sellerData.userName}</span></p>
                 <p><strong>Nombre:</strong> <span>${sellerData.fullName}</span></p>
                 <p><strong>Rol:</strong> <span>${sellerData.role}</span></p>
-                <p><strong>Origen:</strong> <span>Reconstrucción por auditoría</span></p>
+                <p><strong>Origen:</strong> <span>${originLabel}</span></p>
               </section>
             </div>
 
@@ -532,9 +537,11 @@ export default function InvoicePreviewModal({
 
             <p className="invoice-subtitle">Factura N° {visualInvoiceNumber}</p>
 
-            <p className="invoice-subtitle">
-              Representación generada para reconstrucción y auditoría de venta
-            </p>
+            {isAuditReconstruction && (
+              <p className="invoice-subtitle">
+                Representacion generada para reconstruccion y auditoria de venta
+              </p>
+            )}
 
             <div className="invoice-audit-grid">
               <section className="invoice-audit-card">
@@ -555,7 +562,7 @@ export default function InvoicePreviewModal({
                 <p><strong>Usuario:</strong><span>{sellerData.userName}</span></p>
                 <p><strong>Nombre:</strong><span>{sellerData.fullName}</span></p>
                 <p><strong>Rol:</strong><span>{sellerData.role}</span></p>
-                <p><strong>Origen:</strong><span>Reconstrucción por auditoría</span></p>
+                <p><strong>Origen:</strong><span>{originLabel}</span></p>
               </section>
             </div>
 

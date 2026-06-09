@@ -112,7 +112,7 @@ export default function HomePage() {
             </span>
 
             <h1>
-              Bienvenido, <span>{user?.userName || "usuario"}</span>
+              Bienvenido, <span>{String(user?.userName || "USUARIO").toUpperCase()}</span>
             </h1>
 
             <p>

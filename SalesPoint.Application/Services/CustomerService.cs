@@ -62,7 +62,7 @@ public sealed class CustomerService : ICustomerService
             throw new DomainException("Ya existe un cliente con el mismo correo.");
 
         if (await _repository.ExistsByCedulaAsync(request.Cedula))
-            throw new DomainException("Ya existe un cliente registrado con esta cédula.");
+            throw new DomainException("Ya existe un cliente registrado con esta cedula.");
 
         var customer = new Customer(
             request.FirstName,
@@ -95,7 +95,7 @@ public sealed class CustomerService : ICustomerService
             throw new DomainException("Ya existe otro cliente con el mismo correo.");
 
         if (await _repository.ExistsByCedulaAsync(request.Cedula, id))
-            throw new DomainException("Ya existe otro cliente registrado con esta cédula.");
+            throw new DomainException("Ya existe otro cliente registrado con esta cedula.");
 
         customer.Update(
             request.FirstName,
@@ -115,26 +115,46 @@ public sealed class CustomerService : ICustomerService
             ?? throw new DomainException("Cliente no encontrado.");
 
         if (await _repository.HasHistoryAsync(id))
-        {
-            customer.SoftDelete();
-            await _repository.UpdateAsync(customer);
-
-            return new DeleteResultDto
-            {
-                WasPhysical = false,
-                Message = "El cliente tiene historial de ventas. Se marcó como inactivo para conservar la auditoría."
-            };
-        }
+            throw new DomainException("No se puede eliminar fisicamente el cliente porque tiene historial. Use Desactivar para conservar la auditoria.");
 
         await _repository.DeleteAsync(customer);
 
         return new DeleteResultDto
         {
             WasPhysical = true,
-            Message = "Cliente eliminado físicamente porque no tenía historial asociado."
+            Message = "Cliente eliminado fisicamente porque no tenia historial asociado."
         };
     }
 
+    public async Task<DeleteResultDto> DeactivateAsync(int id)
+    {
+        var customer = await _repository.GetByIdAsync(id)
+            ?? throw new DomainException("Cliente no encontrado.");
+
+        customer.Deactivate();
+        await _repository.UpdateAsync(customer);
+
+        return new DeleteResultDto
+        {
+            WasPhysical = false,
+            Message = "Cliente desactivado correctamente. Permanecera visible para auditoria."
+        };
+    }
+
+    public async Task<DeleteResultDto> ActivateAsync(int id)
+    {
+        var customer = await _repository.GetByIdAsync(id)
+            ?? throw new DomainException("Cliente no encontrado.");
+
+        customer.Activate();
+        await _repository.UpdateAsync(customer);
+
+        return new DeleteResultDto
+        {
+            WasPhysical = false,
+            Message = "Cliente activado correctamente."
+        };
+    }
     private static CustomerDto Map(Customer customer)
     {
         return new CustomerDto
@@ -145,7 +165,8 @@ public sealed class CustomerService : ICustomerService
             Cedula = customer.Cedula ?? string.Empty,
             Phone = customer.Phone,
             Address = customer.Address,
-            Email = customer.Email
+            Email = customer.Email,
+            IsActive = customer.IsActive
         };
     }
 }

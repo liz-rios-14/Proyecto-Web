@@ -117,24 +117,24 @@ public sealed class CustomerRepository : ICustomerRepository
             return query.Where(customer => customer.Id == id);
 
         if (cleanField == "firstname")
-            return query.Where(customer => customer.FirstName.Contains(cleanValue.ToUpper()));
+            return query.Where(customer => customer.FirstName.StartsWith(cleanValue.ToUpper()));
 
         if (cleanField == "lastname")
-            return query.Where(customer => customer.LastName.Contains(cleanValue.ToUpper()));
+            return query.Where(customer => customer.LastName.StartsWith(cleanValue.ToUpper()));
 
         if (cleanField == "cedula")
             return query.Where(customer =>
                 customer.Cedula != null &&
-                customer.Cedula.Contains(cleanValue));
+                customer.Cedula.StartsWith(cleanValue));
 
         if (cleanField == "phone")
-            return query.Where(customer => customer.Phone.Contains(cleanValue));
+            return query.Where(customer => customer.Phone.StartsWith(cleanValue));
 
         if (cleanField == "address")
-            return query.Where(customer => customer.Address.Contains(cleanValue.ToUpper()));
+            return query.Where(customer => customer.Address.StartsWith(cleanValue.ToUpper()));
 
         if (cleanField == "email")
-            return query.Where(customer => customer.Email.Contains(cleanValue.ToLowerInvariant()));
+            return query.Where(customer => customer.Email.StartsWith(cleanValue.ToLowerInvariant()));
 
         return query;
     }

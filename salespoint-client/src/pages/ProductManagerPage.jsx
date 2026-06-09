@@ -18,6 +18,8 @@ const productColumns = [
   { key: "name", label: "Nombre" },
   { key: "price", label: "Precio", type: "money" },
   { key: "stock", label: "Stock", type: "number" },
+  { key: "stockAlert", label: "Aviso" },
+  { key: "statusLabel", label: "Estado" },
 ];
 
 const productSearchFields = [
@@ -35,6 +37,7 @@ export default function ProductManagerPage() {
   const [searchField, setSearchField] = useState("name");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   const saveButtonRef = useRef(null);
@@ -46,7 +49,7 @@ export default function ProductManagerPage() {
     try {
       const params = {
         pageNumber: currentPage,
-        pageSize: 8,
+        pageSize,
       };
 
       if (searchField && searchValue.trim()) {
@@ -70,7 +73,7 @@ export default function ProductManagerPage() {
 
   useEffect(() => {
     loadProducts(page);
-  }, [page]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -98,7 +101,7 @@ export default function ProductManagerPage() {
 
     setSearchValue(
       value
-        .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/g, "")
+        .replace(/[^\p{L}0-9\s]/gu, "")
         .toUpperCase()
         .slice(0, 80)
     );
@@ -111,7 +114,7 @@ export default function ProductManagerPage() {
       setForm({
         ...form,
         name: value
-          .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]/g, "")
+          .replace(/[^\p{L}0-9\s]/gu, "")
           .toUpperCase()
           .slice(0, 80),
       });
@@ -166,7 +169,7 @@ export default function ProductManagerPage() {
       return;
     }
 
-    if (!/^[A-ZÁÉÍÓÚÜÑ0-9 .,\-/]+$/.test(request.name)) {
+    if (!/^[\p{L}0-9 .,\-/]+$/u.test(request.name)) {
       showAlert("El nombre del producto contiene caracteres no permitidos.", "warning");
       return;
     }
@@ -183,7 +186,7 @@ export default function ProductManagerPage() {
 
     if (!Number.isInteger(request.stock) || request.stock < 0) {
       showAlert(
-        "El stock debe ser un número entero mayor o igual a cero.",
+        "El stock debe ser un numero entero mayor o igual a cero.",
         "warning"
       );
       return;
@@ -251,20 +254,20 @@ export default function ProductManagerPage() {
 
   const deleteProduct = async (id) => {
     const confirmed = await showConfirm(
-      "¿Seguro que desea eliminar este producto?",
+      "Seguro que desea eliminar fisicamente este producto?",
       {
         title: "Eliminar producto",
-        confirmText: "Sí, continuar",
+        confirmText: "Si, eliminar",
       }
     );
 
     if (!confirmed) return;
 
     const finalConfirmation = await showConfirm(
-      "Si el producto tiene historial se desactivará para conservar la auditoría. Si no tiene historial se eliminará físicamente. ¿Desea continuar?",
+      "La eliminacion fisica solo se permite si el producto no tiene historial. Si tiene ventas o inventario, use Desactivar.",
       {
-        title: "Confirmación final",
-        confirmText: "Confirmar",
+        title: "Confirmacion final",
+        confirmText: "Eliminar fisicamente",
       }
     );
 
@@ -272,7 +275,7 @@ export default function ProductManagerPage() {
 
     try {
       const response = await api.delete(`/products/${id}`);
-      showAlert(response.data?.message ?? "Producto procesado correctamente.", "success");
+      showAlert(response.data?.message ?? "Producto eliminado correctamente.", "success");
 
       if (products.length === 1 && page > 1) {
         setPage(page - 1);
@@ -288,6 +291,43 @@ export default function ProductManagerPage() {
     }
   };
 
+  const deactivateProduct = async (id) => {
+    const confirmed = await showConfirm(
+      "El producto quedara inactivo, no saldra para vender, pero seguira visible en la tabla. Desea continuar?",
+      {
+        title: "Desactivar producto",
+        confirmText: "Desactivar",
+      }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await api.post(`/products/${id}/deactivate`);
+      showAlert(response.data?.message ?? "Producto desactivado correctamente.", "success");
+      loadProducts(page);
+    } catch (error) {
+      console.error(error);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo desactivar el producto."),
+        "error"
+      );
+    }
+  };
+
+  const activateProduct = async (id) => {
+    try {
+      const response = await api.post(`/products/${id}/activate`);
+      showAlert(response.data?.message ?? "Producto activado correctamente.", "success");
+      loadProducts(page);
+    } catch (error) {
+      console.error(error);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo activar el producto."),
+        "error"
+      );
+    }
+  };
   useKeyboardShortcuts(
     [
       { ctrl: true, key: "b", action: () => searchInputRef.current?.focus() },
@@ -315,11 +355,11 @@ export default function ProductManagerPage() {
 
         <div className="actions-row">
           <button ref={saveButtonRef} onClick={saveProduct}>
-            {editingId ? "💾 Actualizar" : "💾 Guardar"}
+            {editingId ? "Actualizar" : "Guardar"}
           </button>
 
           <button ref={cleanButtonRef} className="secondary-button" onClick={resetForm}>
-            🧹 Limpiar
+            Limpiar
           </button>
         </div>
       </div>
@@ -344,14 +384,14 @@ export default function ProductManagerPage() {
 
           <input
             ref={searchInputRef}
-            placeholder="Ingrese valor de búsqueda"
+            placeholder="Ingrese valor de busqueda"
             type={searchField === "id" || searchField === "stock" || searchField === "price" ? "number" : "text"}
             value={searchValue}
             onChange={handleSearchValueChange}
           />
 
           <button ref={searchButtonRef} onClick={() => loadProducts(1)}>
-            🔍 Buscar
+            Buscar
           </button>
         </div>
       </div>
@@ -361,20 +401,53 @@ export default function ProductManagerPage() {
 
         <DataTable
           columns={productColumns}
-          data={products}
+          data={products.map((product) => ({
+            ...product,
+            stockAlert: Number(product.stock) === 1 ? "Stock bajo: 1" : "-",
+            statusLabel: product.isActive ? "ACTIVO" : "INACTIVO",
+          }))}
           emptyMessage="Sin productos registrados"
           actions={(product) => (
             <>
               <button className="table-action edit-button" onClick={() => editProduct(product)}>
-                ✏️ Editar
+                Editar
               </button>
 
+              {product.isActive ? (
+                <button className="table-action secondary-button" onClick={() => deactivateProduct(product.id)}>
+                  Desactivar
+                </button>
+              ) : (
+                <button className="table-action invoice-button" onClick={() => activateProduct(product.id)}>
+                  Activar
+                </button>
+              )}
+
               <button className="table-action delete-button" onClick={() => deleteProduct(product.id)}>
-                🗑️ Eliminar / desactivar
+                Eliminar
               </button>
             </>
           )}
         />
+
+        <div className="actions-row">
+          <label className="page-size-control">
+            Registros por pagina
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {[10, 15, 20, 30].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <Pagination
           page={page}

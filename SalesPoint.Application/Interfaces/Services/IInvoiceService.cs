@@ -15,4 +15,7 @@ public interface IInvoiceService
 
     Task<ReconstructedInvoiceDto?> ReconstructByInvoiceNumberAsync(
         string invoiceNumber);
+    Task<PagedResponse<AuditInvoiceHistoryDto>> GetAuditHistoryAsync(
+        int pageNumber,
+        int pageSize);
 }

@@ -5,16 +5,23 @@ import DataTable from "../components/DataTable";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import Pagination from "../components/Pagination";
-import { getInvoices, reconstructInvoiceByNumber } from "../api/invoiceApi";
+import { getAuditInvoiceHistory, getInvoices, reconstructInvoiceByNumber } from "../api/invoiceApi";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
-
-const PAGE_SIZE = 8;
+import { getAuthRole } from "../services/authStorage";
 
 const invoiceColumns = [
   { key: "invoiceNumber", label: "Factura" },
   { key: "customerName", label: "Cliente" },
   { key: "formattedDate", label: "Fecha" },
+  { key: "total", label: "Total", type: "money" },
+];
+
+const auditHistoryColumns = [
+  { key: "originalInvoiceNumber", label: "Factura original" },
+  { key: "generatedInvoiceNumber", label: "Factura generada" },
+  { key: "formattedGeneratedAt", label: "Fecha" },
+  { key: "generatedByLabel", label: "Usuario" },
   { key: "total", label: "Total", type: "money" },
 ];
 
@@ -78,6 +85,7 @@ const getNumber = (...values) => {
 export default function InvoiceHistoryPage() {
   const navigate = useNavigate();
   const { showAlert } = useAppAlert();
+  const isAdministrator = getAuthRole() === "ADMINISTRATOR";
 
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -87,7 +95,12 @@ export default function InvoiceHistoryPage() {
   const [searchValue, setSearchValue] = useState("");
   const [auditInvoiceNumber, setAuditInvoiceNumber] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [auditHistory, setAuditHistory] = useState([]);
+  const [auditHistoryPage, setAuditHistoryPage] = useState(1);
+  const [auditHistoryTotalPages, setAuditHistoryTotalPages] = useState(1);
+  const [auditHistoryPageSize, setAuditHistoryPageSize] = useState(10);
 
   const firstViewButtonRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -95,7 +108,7 @@ export default function InvoiceHistoryPage() {
 
   const loadInvoices = async (currentPage = page) => {
     try {
-      const data = await getInvoices(currentPage, PAGE_SIZE);
+      const data = await getInvoices(currentPage, pageSize);
 
       const formattedInvoices = (data.items ?? []).map((invoice) => ({
         ...invoice,
@@ -119,6 +132,34 @@ export default function InvoiceHistoryPage() {
     setAuditInvoiceNumber("");
     setPage(1);
     loadInvoices(1);
+    if (isAdministrator) {
+      loadAuditHistory(1, auditHistoryPageSize);
+    }
+  };
+
+  const loadAuditHistory = async (
+    currentPage = auditHistoryPage,
+    currentPageSize = auditHistoryPageSize
+  ) => {
+    try {
+      const data = await getAuditInvoiceHistory(currentPage, currentPageSize);
+
+      setAuditHistory(
+        (data.items ?? []).map((item) => ({
+          ...item,
+          formattedGeneratedAt: formatDateTime(item.generatedAt),
+          generatedByLabel: `Usuario ${item.generatedByUserId}`,
+        }))
+      );
+      setAuditHistoryTotalPages(Math.max(data.totalPages ?? 1, 1));
+    } catch (error) {
+      setAuditHistory([]);
+      setAuditHistoryTotalPages(1);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo cargar el historico de auditoria."),
+        "error"
+      );
+    }
   };
 
   const filteredInvoices = useMemo(() => {
@@ -133,7 +174,11 @@ export default function InvoiceHistoryPage() {
         return false;
       }
 
-      return String(fieldValue).toUpperCase().includes(value);
+      if (searchField === "total") {
+        return Number(fieldValue) === Number(searchValue);
+      }
+
+      return String(fieldValue).toUpperCase().startsWith(value);
     });
   }, [invoices, searchField, searchValue]);
 
@@ -316,7 +361,13 @@ export default function InvoiceHistoryPage() {
 
   useEffect(() => {
     loadInvoices(page);
-  }, [page]);
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    if (!isAdministrator) return;
+
+    loadAuditHistory(auditHistoryPage, auditHistoryPageSize);
+  }, [auditHistoryPage, auditHistoryPageSize, isAdministrator]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -467,7 +518,65 @@ export default function InvoiceHistoryPage() {
           onNext={() => setPage((current) => Math.min(current + 1, totalPages))}
           onPageChange={(newPage) => setPage(newPage)}
         />
+
+        <div className="actions-row">
+          <label className="page-size-control">
+            Registros por pagina
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {[10, 15, 20, 30].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
+
+      {isAdministrator && (
+      <div className="card">
+        <h2>Historico facturas auditoria</h2>
+
+        <DataTable
+          columns={auditHistoryColumns}
+          data={auditHistory}
+          emptyMessage="Sin facturas generadas por auditoria"
+        />
+
+        <div className="actions-row">
+          <label className="page-size-control">
+            Registros por pagina
+            <select
+              value={auditHistoryPageSize}
+              onChange={(event) => {
+                setAuditHistoryPageSize(Number(event.target.value));
+                setAuditHistoryPage(1);
+              }}
+            >
+              {[10, 15, 20, 30].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <Pagination
+          page={auditHistoryPage}
+          totalPages={auditHistoryTotalPages}
+          onPrevious={() => setAuditHistoryPage((current) => Math.max(current - 1, 1))}
+          onNext={() => setAuditHistoryPage((current) => Math.min(current + 1, auditHistoryTotalPages))}
+          onPageChange={(newPage) => setAuditHistoryPage(newPage)}
+        />
+      </div>
+      )}
 
       {selectedInvoice && (
         <InvoicePreviewModal
@@ -480,6 +589,7 @@ export default function InvoiceHistoryPage() {
           subtotal={selectedInvoice.subtotal}
           iva={selectedInvoice.tax}
           total={selectedInvoice.total}
+          isAuditReconstruction={true}
           onBack={() => setShowPreview(false)}
           onCloseAndClean={closePreview}
           onCreateNewSale={createNewSaleFromAudit}

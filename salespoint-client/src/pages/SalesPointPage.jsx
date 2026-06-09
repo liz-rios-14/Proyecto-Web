@@ -2,6 +2,7 @@ import Layout from "../components/Layout";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import SearchModal from "../components/SearchModal";
+import CreateCustomerModal from "../components/CreateCustomerModal";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
@@ -60,6 +61,7 @@ function SalesPointContent() {
   const [quantity, setQuantity] = useState("");
   const [details, setDetails] = useState([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [createdInvoice, setCreatedInvoice] = useState(null);
@@ -339,18 +341,21 @@ function SalesPointContent() {
 
   const getCustomerValidationMessage = () => {
     if (!customer?.id || Number(customer.id) <= 0) {
-      return "Seleccione un cliente válido.";
+      return "Cree o cargue un cliente valido antes de facturar.";
     }
 
-    const firstName = customer.firstName?.trim().replace(/\s+/g, " ") ?? "";
-    const lastName = customer.lastName?.trim().replace(/\s+/g, " ") ?? "";
-    const cedula = customer.cedula?.trim() ?? "";
-    const phone = customer.phone?.trim() ?? "";
-    const address = customer.address?.trim() ?? "";
-    const email = customer.email?.trim() ?? "";
+    const firstName = customer?.firstName?.trim().replace(/\s+/g, " ") ?? "";
+    const lastName = customer?.lastName?.trim().replace(/\s+/g, " ") ?? "";
+    const cedula = customer?.cedula?.trim() ?? "";
+    const phone = customer?.phone?.trim() ?? "";
+    const address = customer?.address?.trim() ?? "";
+    const email = customer?.email?.trim() ?? "";
 
     if (!firstName || !lastName || !phone || !address || !email) {
       return "Complete todos los datos del cliente antes de facturar.";
+    }
+    if (!cedula) {
+      return "Ingrese la cedula del cliente antes de facturar.";
     }
 
     if (firstName.length < 2 || lastName.length < 2) {
@@ -364,7 +369,7 @@ function SalesPointContent() {
       return "El nombre y apellido del cliente solo pueden contener letras.";
     }
 
-    if (cedula && !isValidEcuadorianCedula(cedula)) {
+    if (!isValidEcuadorianCedula(cedula)) {
       return "Ingrese una cédula ecuatoriana válida.";
     }
 
@@ -528,10 +533,10 @@ function SalesPointContent() {
     }
   };
 
-  const fetchCustomers = async (field, value, page) => {
+  const fetchCustomers = async (field, value, page, pageSize = 10) => {
     const params = {
       pageNumber: page,
-      pageSize: 5,
+      pageSize,
       onlyActive: true,
     };
 
@@ -544,10 +549,10 @@ function SalesPointContent() {
     return response.data;
   };
 
-  const fetchProducts = async (field, value, page) => {
+  const fetchProducts = async (field, value, page, pageSize = 10) => {
     const params = {
       pageNumber: page,
-      pageSize: 5,
+      pageSize,
       onlyAvailable: true,
     };
 
@@ -582,6 +587,13 @@ function SalesPointContent() {
         "warning"
       );
       return;
+    }
+
+    if (Number(product.stock) === 1) {
+      showAlert(
+        `Atencion: el producto ${product.name} tiene solo 1 unidad en stock.`,
+        "warning"
+      );
     }
 
     if (existingDetail) {
@@ -706,6 +718,7 @@ function SalesPointContent() {
 
   const closeAllModals = () => {
     setShowCustomerModal(false);
+    setShowCreateCustomerModal(false);
     setShowProductModal(false);
     setShowInvoicePreview(false);
   };
@@ -784,6 +797,7 @@ function SalesPointContent() {
       customerEmail: customer?.email ?? "",
       customerPhone: customer?.phone ?? "",
       customerAddress: customer?.address ?? "",
+      auditSourceInvoiceNumber: auditSource || "",
       details: details.map((item) => ({
         productId: item.id,
         quantity: Number(item.quantity),
@@ -804,6 +818,10 @@ function SalesPointContent() {
       const response = await api.post("/invoices", request);
 
       setCreatedInvoice(response.data);
+      setCustomer((currentCustomer) => ({
+        ...currentCustomer,
+        id: response.data.customerId || currentCustomer?.id || 0,
+      }));
       localStorage.removeItem(draftKey);
       showAlert("Factura generada correctamente.", "success");
 
@@ -931,13 +949,22 @@ function SalesPointContent() {
           />
         </div>
 
-        <button
-          ref={customerButtonRef}
-          style={{ marginTop: "10px" }}
-          onClick={() => setShowCustomerModal(true)}
-        >
-          🔍 Buscar cliente
-        </button>
+        <div className="actions-row" style={{ marginTop: "10px" }}>
+          <button
+            ref={customerButtonRef}
+            onClick={() => setShowCustomerModal(true)}
+          >
+            Buscar cliente
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setShowCreateCustomerModal(true)}
+          >
+            Crear cliente
+          </button>
+        </div>
       </div>
 
       <div className="card">
@@ -1138,6 +1165,15 @@ function SalesPointContent() {
         ]}
       />
 
+      <CreateCustomerModal
+        isOpen={showCreateCustomerModal}
+        onClose={() => setShowCreateCustomerModal(false)}
+        onLoad={(createdCustomer) => {
+          setCustomer(createdCustomer);
+          setCreatedInvoice(null);
+        }}
+      />
+
       <SearchModal
         isOpen={showProductModal}
         title="Buscar producto"
@@ -1175,6 +1211,7 @@ function SalesPointContent() {
         iva={iva}
         total={total}
         auditComparison={auditComparison}
+        isAuditReconstruction={isAuditReconstruction}
         onBack={() => {
           if (createdInvoice?.invoiceNumber) {
             cleanInvoice();

@@ -9,6 +9,7 @@ public sealed class CreateInvoiceRequest
     public string CustomerEmail { get; set; } = string.Empty;
     public string CustomerPhone { get; set; } = string.Empty;
     public string CustomerAddress { get; set; } = string.Empty;
+    public string AuditSourceInvoiceNumber { get; set; } = string.Empty;
 
     public List<CreateInvoiceDetailRequest> Details { get; set; } = new();
 }

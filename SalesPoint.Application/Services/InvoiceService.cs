@@ -41,7 +41,7 @@ public sealed class InvoiceService : IInvoiceService
             throw new DomainException("La factura debe tener al menos un producto.");
 
         if (request.CustomerId <= 0)
-            throw new DomainException("El cliente es obligatorio.");
+            throw new DomainException("Cree o cargue un cliente antes de facturar.");
 
         var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
 
@@ -93,7 +93,19 @@ public sealed class InvoiceService : IInvoiceService
         if (!Regex.IsMatch(customerAddressSnapshot, @"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,#\-]+$"))
             throw new DomainException("La dirección contiene caracteres no permitidos.");
 
-        var invoice = new Invoice(request.CustomerId);
+        var auditSourceInvoiceNumber = request.AuditSourceInvoiceNumber?.Trim();
+        Invoice? originalAuditInvoice = null;
+
+        if (!string.IsNullOrWhiteSpace(auditSourceInvoiceNumber))
+        {
+            originalAuditInvoice = await _invoiceRepository
+                .GetByInvoiceNumberForAuditAsync(auditSourceInvoiceNumber);
+
+            if (originalAuditInvoice is null)
+                throw new DomainException("No se pudo registrar la auditoria porque la factura original no existe.");
+        }
+
+        var invoice = new Invoice(customer.Id);
         var seller = await _userRepository.GetByIdAsync(_currentUser.UserId)
             ?? throw new DomainException("El vendedor autenticado no existe.");
 
@@ -167,6 +179,17 @@ public sealed class InvoiceService : IInvoiceService
         dto.CustomerPhone = createdInvoice.CustomerPhoneSnapshot;
         dto.CustomerAddress = createdInvoice.CustomerAddressSnapshot;
         dto.CustomerEmail = createdInvoice.CustomerEmailSnapshot;
+
+        if (originalAuditInvoice is not null)
+        {
+            await _invoiceRepository.CreateAuditHistoryAsync(
+                new AuditInvoiceHistory(
+                    originalAuditInvoice.InvoiceNumber,
+                    createdInvoice.Id,
+                    createdInvoice.InvoiceNumber,
+                    _currentUser.UserId,
+                    createdInvoice.Total));
+        }
 
         return dto;
     }
@@ -326,6 +349,35 @@ public sealed class InvoiceService : IInvoiceService
             Subtotal = invoice.Subtotal,
             Tax = invoice.Tax,
             Total = invoice.Total
+        };
+    }
+
+    public async Task<PagedResponse<AuditInvoiceHistoryDto>> GetAuditHistoryAsync(
+        int pageNumber,
+        int pageSize)
+    {
+        pageNumber = pageNumber <= 0 ? 1 : pageNumber;
+        pageSize = pageSize <= 0 ? 10 : pageSize;
+
+        var data = await _invoiceRepository.GetAuditHistoryAsync(pageNumber, pageSize);
+        var totalItems = await _invoiceRepository.CountAuditHistoryAsync();
+
+        return new PagedResponse<AuditInvoiceHistoryDto>
+        {
+            Items = data.Select(history => new AuditInvoiceHistoryDto
+            {
+                Id = history.Id,
+                OriginalInvoiceNumber = history.OriginalInvoiceNumber,
+                GeneratedInvoiceId = history.GeneratedInvoiceId,
+                GeneratedInvoiceNumber = history.GeneratedInvoiceNumber,
+                GeneratedByUserId = history.GeneratedByUserId,
+                GeneratedAt = history.GeneratedAt,
+                Total = history.Total
+            }).ToList(),
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
         };
     }
 

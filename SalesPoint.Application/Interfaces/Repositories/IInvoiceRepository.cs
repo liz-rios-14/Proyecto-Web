@@ -16,4 +16,7 @@ public interface IInvoiceRepository
     Task<Invoice?> GetByInvoiceNumberForAuditAsync(
         string invoiceNumber,
         int? sellerId = null);
+    Task<AuditInvoiceHistory> CreateAuditHistoryAsync(AuditInvoiceHistory history);
+    Task<List<AuditInvoiceHistory>> GetAuditHistoryAsync(int pageNumber, int pageSize);
+    Task<int> CountAuditHistoryAsync();
 }

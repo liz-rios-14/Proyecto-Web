@@ -1,0 +1,313 @@
+import { useEffect, useState } from "react";
+import { api } from "../api/apiClient";
+import { getApiErrorMessage } from "../api/apiError";
+import { useAppAlert } from "./AppAlert";
+import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
+
+const emptyForm = {
+  id: "",
+  firstName: "",
+  lastName: "",
+  cedula: "",
+  phone: "",
+  address: "",
+  email: "",
+};
+
+export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
+  const { showAlert } = useAppAlert();
+  const [form, setForm] = useState(emptyForm);
+  const [loadedCustomer, setLoadedCustomer] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingById, setIsLoadingById] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setForm(emptyForm);
+    setLoadedCustomer(null);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const updateField = (field, value) => {
+    let cleanValue = value;
+
+    if (field === "firstName" || field === "lastName") {
+      cleanValue = value
+        .replace(/[^a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
+        .toUpperCase()
+        .slice(0, 40);
+    }
+
+    if (field === "id") {
+      cleanValue = value.replace(/\D/g, "").slice(0, 9);
+      setLoadedCustomer(null);
+    }
+
+    if (field === "cedula") {
+      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      setLoadedCustomer(null);
+    }
+
+    if (field === "phone") {
+      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+    }
+
+    if (field === "address") {
+      cleanValue = value.toUpperCase().slice(0, 150);
+    }
+
+    if (field === "email") {
+      cleanValue = value.toLowerCase().slice(0, 120);
+      setLoadedCustomer(null);
+    }
+
+    setForm((current) => ({
+      ...current,
+      [field]: cleanValue,
+    }));
+  };
+
+  const fillFromCustomer = (customer) => {
+    setLoadedCustomer(customer);
+    setForm({
+      id: String(customer.id ?? ""),
+      firstName: customer.firstName ?? "",
+      lastName: customer.lastName ?? "",
+      cedula: customer.cedula ?? "",
+      phone: customer.phone ?? "",
+      address: customer.address ?? "",
+      email: customer.email ?? "",
+    });
+  };
+
+  const loadById = async () => {
+    if (!form.id || Number(form.id) <= 0) {
+      showAlert("Ingrese un ID valido para cargar el cliente.", "warning");
+      return null;
+    }
+
+    try {
+      setIsLoadingById(true);
+      const response = await api.get(`/customers/${Number(form.id)}`);
+      fillFromCustomer(response.data);
+      showAlert("Cliente cargado correctamente.", "success");
+      return response.data;
+    } catch (error) {
+      setLoadedCustomer(null);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo cargar el cliente por ID."),
+        "error"
+      );
+      return null;
+    } finally {
+      setIsLoadingById(false);
+    }
+  };
+
+  const createCustomer = async () => {
+    const request = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      cedula: form.cedula.trim(),
+      phone: form.phone.trim(),
+      address: form.address.trim(),
+      email: form.email.trim(),
+    };
+
+    if (
+      !request.firstName ||
+      !request.lastName ||
+      !request.cedula ||
+      !request.phone ||
+      !request.address ||
+      !request.email
+    ) {
+      showAlert("Complete todos los datos del cliente antes de guardar.", "warning");
+      return;
+    }
+
+    if (!isValidEcuadorianCedula(request.cedula)) {
+      showAlert("Ingrese una cedula ecuatoriana valida.", "warning");
+      return;
+    }
+
+    if (!/^09\d{8}$/.test(request.phone)) {
+      showAlert("Ingrese un numero de telefono valido.", "warning");
+      return;
+    }
+
+    if (request.address.length < 5) {
+      showAlert("La direccion del cliente debe tener al menos 5 caracteres.", "warning");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(request.email)) {
+      showAlert("El correo del cliente no tiene un formato valido.", "warning");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const [cedulaResponse, emailResponse] = await Promise.all([
+        api.get("/customers/search", {
+          params: {
+            field: "cedula",
+            value: request.cedula,
+            pageNumber: 1,
+            pageSize: 1,
+            onlyActive: false,
+          },
+        }),
+        api.get("/customers/search", {
+          params: {
+            field: "email",
+            value: request.email,
+            pageNumber: 1,
+            pageSize: 1,
+            onlyActive: false,
+          },
+        }),
+      ]);
+
+      if ((cedulaResponse.data?.items ?? []).length > 0) {
+        showAlert("Ya existe un cliente registrado con esta cedula.", "warning");
+        return;
+      }
+
+      if ((emailResponse.data?.items ?? []).length > 0) {
+        showAlert("Ya existe un cliente con el mismo correo.", "warning");
+        return;
+      }
+
+      const response = await api.post("/customers", request);
+      fillFromCustomer(response.data);
+      showAlert(
+        `Cliente ${response.data.id} creado correctamente. Presione Cargar cliente para usarlo en la factura.`,
+        "success"
+      );
+    } catch (error) {
+      setLoadedCustomer(null);
+      showAlert(
+        getApiErrorMessage(error, "No se pudo crear el cliente."),
+        "error"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadCustomer = async () => {
+    if (loadedCustomer) {
+      onLoad(loadedCustomer);
+      onClose();
+      return;
+    }
+
+    if (form.id) {
+      const customer = await loadById();
+
+      if (customer) {
+        onLoad(customer);
+        onClose();
+      }
+
+      return;
+    }
+
+    showAlert("Cree el cliente o carguelo por ID antes de continuar.", "warning");
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal" role="dialog" aria-modal="true">
+        <div className="modal-header">
+          <h3 className="modal-title">Crear cliente para factura</h3>
+
+          <button className="close-icon" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="form-grid">
+          <input
+            value={form.id}
+            placeholder="ID"
+            inputMode="numeric"
+            onChange={(event) => updateField("id", event.target.value)}
+          />
+
+          <input
+            value={form.firstName}
+            placeholder="Nombre"
+            onChange={(event) => updateField("firstName", event.target.value)}
+          />
+
+          <input
+            value={form.lastName}
+            placeholder="Apellido"
+            onChange={(event) => updateField("lastName", event.target.value)}
+          />
+
+          <input
+            value={form.cedula}
+            placeholder="Cedula ecuatoriana"
+            inputMode="numeric"
+            maxLength="10"
+            onChange={(event) => updateField("cedula", event.target.value)}
+          />
+
+          <input
+            value={form.phone}
+            placeholder="Telefono"
+            inputMode="numeric"
+            maxLength="10"
+            onChange={(event) => updateField("phone", event.target.value)}
+          />
+
+          <input
+            value={form.address}
+            placeholder="Direccion"
+            onChange={(event) => updateField("address", event.target.value)}
+          />
+
+          <input
+            value={form.email}
+            placeholder="Correo"
+            onChange={(event) => updateField("email", event.target.value)}
+          />
+        </div>
+
+        <div className="actions-row" style={{ marginTop: "16px" }}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={loadById}
+            disabled={isLoadingById || isSaving}
+          >
+            {isLoadingById ? "Cargando..." : "Buscar ID"}
+          </button>
+
+          <button
+            type="button"
+            onClick={createCustomer}
+            disabled={isSaving || isLoadingById}
+          >
+            {isSaving ? "Guardando..." : "Guardar cliente"}
+          </button>
+
+          <button
+            type="button"
+            className="invoice-button"
+            onClick={loadCustomer}
+            disabled={isSaving || isLoadingById}
+          >
+            Cargar cliente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

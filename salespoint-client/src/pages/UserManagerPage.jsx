@@ -71,7 +71,7 @@ export default function UserManagerPage() {
     return mappedUsers.filter((user) =>
       [user.fullName, user.userName, user.email, user.roleName]
         .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(value))
+        .some((field) => field.toLowerCase().startsWith(value))
     );
   }, [search, users]);
 

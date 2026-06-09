@@ -12,6 +12,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<AuditInvoiceHistory> AuditInvoiceHistories => Set<AuditInvoiceHistory>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleDetail> SaleDetails => Set<SaleDetail>();
     public DbSet<User> Users => Set<User>();

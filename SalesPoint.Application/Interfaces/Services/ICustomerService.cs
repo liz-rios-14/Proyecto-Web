@@ -16,4 +16,6 @@ public interface ICustomerService
     Task<CustomerDto> CreateAsync(CreateCustomerRequest request);
     Task UpdateAsync(int id, UpdateCustomerRequest request);
     Task<DeleteResultDto> DeleteAsync(int id);
+    Task<DeleteResultDto> DeactivateAsync(int id);
+    Task<DeleteResultDto> ActivateAsync(int id);
 }

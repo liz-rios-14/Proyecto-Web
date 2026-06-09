@@ -64,25 +64,25 @@ public sealed class ErrorLogRepository : IErrorLogRepository
             return query.Where(error => error.UserId == userId);
 
         if (cleanField == "source")
-            return query.Where(error => error.Source.Contains(cleanValue));
+            return query.Where(error => error.Source.StartsWith(cleanValue));
 
         if (cleanField == "message")
-            return query.Where(error => error.Message.Contains(cleanValue));
+            return query.Where(error => error.Message.StartsWith(cleanValue));
 
         if (cleanField == "exceptiontype")
-            return query.Where(error => error.ExceptionType.Contains(cleanValue));
+            return query.Where(error => error.ExceptionType.StartsWith(cleanValue));
 
         if (cleanField == "path")
-            return query.Where(error => error.Path.Contains(cleanValue));
+            return query.Where(error => error.Path.StartsWith(cleanValue));
 
         if (cleanField == "httpmethod")
-            return query.Where(error => error.HttpMethod.Contains(cleanValue));
+            return query.Where(error => error.HttpMethod.StartsWith(cleanValue));
 
         return query.Where(error =>
-            error.Source.Contains(cleanValue) ||
-            error.Message.Contains(cleanValue) ||
-            error.ExceptionType.Contains(cleanValue) ||
-            error.Path.Contains(cleanValue) ||
-            error.HttpMethod.Contains(cleanValue));
+            error.Source.StartsWith(cleanValue) ||
+            error.Message.StartsWith(cleanValue) ||
+            error.ExceptionType.StartsWith(cleanValue) ||
+            error.Path.StartsWith(cleanValue) ||
+            error.HttpMethod.StartsWith(cleanValue));
     }
 }

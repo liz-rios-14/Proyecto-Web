@@ -52,6 +52,7 @@ tr:hover {
 
 .data-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin-top: 0;
   border-radius: 14px;
@@ -61,13 +62,70 @@ tr:hover {
 .data-table,
 .modal-table,
 .sales-detail-table {
-  min-width: 720px;
+  min-width: 980px;
+  table-layout: fixed;
 }
 
 .data-table td,
 .modal-table td,
 .sales-detail-table td {
-  max-width: 320px;
+  max-width: 280px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  vertical-align: middle;
+}
+
+.data-table th,
+.modal-table th,
+.sales-detail-table th {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  vertical-align: middle;
+}
+
+.cell-content {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.data-table .col-id,
+.modal-table .col-id {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.data-table .col-status,
+.data-table .col-access,
+.modal-table .col-status,
+.modal-table .col-access {
+  white-space: nowrap;
+}
+
+.data-table .col-status .cell-content,
+.data-table .col-access .cell-content,
+.modal-table .col-status,
+.modal-table .col-access {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.data-table .col-alert .cell-content,
+.modal-table .col-alert {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.data-table .col-email .cell-content,
+.modal-table .col-email {
   overflow-wrap: anywhere;
 }
 
@@ -117,6 +175,12 @@ tr:hover {
   gap: 8px;
   justify-content: flex-start;
   min-width: max-content;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.table-action {
+  white-space: nowrap;
 }
 
 .pagination,
