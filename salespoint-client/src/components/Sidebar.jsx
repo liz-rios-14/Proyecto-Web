@@ -2,6 +2,8 @@ import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Boxes,
+  BarChart3,
+  ClipboardList,
   CircleHelp,
   FileClock,
   Home,
@@ -18,7 +20,9 @@ import {
   clearAuthSession,
   getAuthRole,
   getAuthUser,
+  getRefreshToken,
 } from "../services/authStorage";
+import { logout as revokeSession } from "../api/authApi";
 import { useAppAlert } from "./AppAlert";
 import { getRoleLabel } from "../services/roleLabels";
 
@@ -53,6 +57,16 @@ export default function Sidebar() {
 
     try {
       setClosingSession(true);
+      const refreshToken = getRefreshToken();
+
+      if (refreshToken) {
+        try {
+          await revokeSession(refreshToken);
+        } catch {
+          // El cierre local continúa aunque la API no esté disponible.
+        }
+      }
+
       clearAuthSession();
       navigate("/login", { replace: true });
       showAlert("Sesión cerrada correctamente.", "success");
@@ -159,6 +173,12 @@ export default function Sidebar() {
             <FileClock size={19} />
             <span>Historial</span>
           </NavLink>
+
+          <NavLink to="/reports" className="sidebar-link">
+            <BarChart3 size={19} />
+            <span>Reportes</span>
+          </NavLink>
+
           {isAdministrator && (
             <>
               <NavLink to="/users" className="sidebar-link">
@@ -174,6 +194,11 @@ export default function Sidebar() {
               <NavLink to="/error-logs" className="sidebar-link">
                 <TriangleAlert size={19} />
                 <span>Registro de errores</span>
+              </NavLink>
+
+              <NavLink to="/audit-logs" className="sidebar-link">
+                <ClipboardList size={19} />
+                <span>Auditoría</span>
               </NavLink>
             </>
           )}

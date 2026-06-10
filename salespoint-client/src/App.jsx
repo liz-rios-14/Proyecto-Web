@@ -10,6 +10,8 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import UserManagerPage from "./pages/UserManagerPage";
 import RoleManagerPage from "./pages/RoleManagerPage";
 import ErrorLogPage from "./pages/ErrorLogPage";
+import AuditLogPage from "./pages/AuditLogPage";
+import ReportsPage from "./pages/ReportsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -91,6 +93,24 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
               <ErrorLogPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/audit-logs"
+          element={
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR"]}>
+              <AuditLogPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR", "SELLER"]}>
+              <ReportsPage />
             </ProtectedRoute>
           }
         />

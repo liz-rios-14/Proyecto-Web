@@ -34,8 +34,8 @@ export default function ForgotPasswordPage() {
     try {
       setLoading(true);
       const result = await forgotPassword({ email: email.trim() });
-      setResetToken(result.resetToken);
-      showAlert("Token de recuperación generado correctamente.", "success");
+      setResetToken(result.resetToken || "");
+      showAlert("Se generó una solicitud de recuperación.", "success");
     } catch (err) {
       const message = getApiErrorMessage(
         err,

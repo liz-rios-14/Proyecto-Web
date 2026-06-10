@@ -124,3 +124,44 @@ input[type="number"] {
 body.dark-mode .field-help {
   color: #cbd5e1;
 }
+.report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.report-filter-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.report-totals {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media print {
+  .no-print,
+  .sidebar,
+  .navbar {
+    display: none !important;
+  }
+
+  .report-print-area .card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #cbd5e1;
+  }
+
+  .report-print-area .table-wrapper {
+    overflow: visible;
+  }
+
+  .report-print-area .data-table {
+    min-width: 0;
+    font-size: 10px;
+  }
+}

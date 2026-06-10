@@ -21,18 +21,35 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
         var result = await _service.LoginAsync(request);
-
         return result.IsSuccess
             ? Ok(result.Data)
             : BadRequest(new { message = result.Message });
     }
 
     [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto request)
+    {
+        var result = await _service.RefreshAsync(request);
+        return result.IsSuccess
+            ? Ok(result.Data)
+            : Unauthorized(new { message = result.Message });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
+    {
+        await _service.LogoutAsync(request);
+        return Ok(new { message = "Sesión cerrada correctamente." });
+    }
+
+    [AllowAnonymous]
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequestDto request)
     {
         var result = await _service.ForgotPasswordAsync(request);
-
         return result.IsSuccess
             ? Ok(result.Data)
             : BadRequest(new { message = result.Message });
@@ -40,12 +57,12 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequestDto request)
     {
         var result = await _service.ResetPasswordAsync(request);
-
         return result.IsSuccess
-            ? Ok(new { message = "Contraseña actualizada correctamente." })
+            ? Ok(new { message = "La contraseña fue actualizada correctamente." })
             : BadRequest(new { message = result.Message });
     }
 }

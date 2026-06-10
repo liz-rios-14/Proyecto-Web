@@ -13,6 +13,7 @@ export default function ResetPasswordPage() {
     email: "",
     resetToken: "",
     newPassword: "",
+    confirmPassword: "",
   });
 
   const [error, setError] = useState("");
@@ -94,6 +95,13 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    if (form.newPassword !== form.confirmPassword) {
+      const message = "Las contraseñas no coinciden.";
+      setError(message);
+      showAlert(message, "warning");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -101,6 +109,7 @@ export default function ResetPasswordPage() {
         email: form.email.trim(),
         resetToken: form.resetToken.trim(),
         newPassword: form.newPassword,
+        confirmPassword: form.confirmPassword,
       });
 
       const message = "Contraseña actualizada correctamente.";
@@ -158,6 +167,17 @@ export default function ResetPasswordPage() {
             <span>Debe incluir mayúscula, minúscula, número y símbolo.</span>
             <span>No puede ser igual a la actual ni a una anterior.</span>
           </div>
+
+          <label htmlFor="confirmPassword">Confirmar contraseña</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            placeholder="Repita la nueva contraseña"
+            value={form.confirmPassword}
+            onChange={(event) =>
+              updateField("confirmPassword", event.target.value)
+            }
+          />
 
           {error && <div className="form-alert">{error}</div>}
           {success && <div className="form-success">{success}</div>}

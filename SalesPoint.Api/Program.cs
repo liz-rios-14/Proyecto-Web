@@ -51,6 +51,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IErrorLogService, ErrorLogService>();
 builder.Services.AddScoped<IStockMovementService, StockMovementService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 
@@ -137,6 +139,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors("ReactPolicy");
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<AuditLogMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();

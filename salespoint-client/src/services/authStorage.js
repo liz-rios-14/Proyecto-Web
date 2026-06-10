@@ -1,18 +1,27 @@
 const TOKEN_KEY = "salespoint-token";
+const REFRESH_TOKEN_KEY = "salespoint-refresh-token";
 const USER_KEY = "salespoint-user";
 
 export function saveAuthSession(authData) {
-  localStorage.setItem(TOKEN_KEY, authData.token);
-  localStorage.setItem(USER_KEY, JSON.stringify(authData));
+  const accessToken = authData.accessToken || authData.token;
+  localStorage.setItem(TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, authData.refreshToken || "");
+  localStorage.setItem(
+    USER_KEY,
+    JSON.stringify({ ...authData, token: accessToken, accessToken })
+  );
 }
 
 export function getAuthToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
 export function getAuthUser() {
   const rawUser = localStorage.getItem(USER_KEY);
-
   if (!rawUser) return null;
 
   try {
@@ -30,26 +39,15 @@ export function getAuthRole() {
     (typeof user?.role === "string" ? user.role : user?.role?.name) ??
     "";
 
-  return String(rawRole)
-    .trim()
-    .toUpperCase();
+  return String(rawRole).trim().toUpperCase();
 }
 
 export function clearAuthSession() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
 
 export function isAuthenticated() {
-  const token = getAuthToken();
-  const user = getAuthUser();
-
-  if (!token || !user) return false;
-
-  if (user.expiration && new Date(user.expiration).getTime() <= Date.now()) {
-    clearAuthSession();
-    return false;
-  }
-
-  return true;
+  return Boolean(getAuthToken() && getAuthUser());
 }

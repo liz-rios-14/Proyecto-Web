@@ -395,10 +395,10 @@ export default function CustomerManagerPage() {
         <div className="form-grid">
           <input name="firstName" placeholder="Nombre" maxLength="40" value={form.firstName} onChange={handleChange} />
           <input name="lastName" placeholder="Apellido" maxLength="40" value={form.lastName} onChange={handleChange} />
-          <input name="cedula" placeholder="Cedula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
+          <input name="cedula" placeholder="Cédula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
           <input name="phone" placeholder="Telefono" inputMode="numeric" maxLength="10" value={form.phone} onChange={handleChange} />
           <input name="address" placeholder="Direccion" maxLength="150" value={form.address} onChange={handleChange} />
-          <input name="cedula" placeholder="Cedula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
+          <input name="email" type="email" placeholder="Correo" maxLength="120" value={form.email} onChange={handleChange} />
         </div>
 
         <div className="actions-row">
@@ -511,4 +511,3 @@ export default function CustomerManagerPage() {
     </Layout>
   );
 }
-

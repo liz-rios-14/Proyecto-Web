@@ -21,6 +21,8 @@ public sealed class AppDbContext : DbContext
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
     public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
