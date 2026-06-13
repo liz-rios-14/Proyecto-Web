@@ -7,5 +7,6 @@ public interface IUserService
     Task<UserDto> CreateAsync(CreateUserRequest request);
     Task UpdateAsync(int id, UpdateUserRequest request);
     Task DisableAsync(int id);
+    Task ActivateAsync(int id);
     Task UnlockAsync(int id);
 }

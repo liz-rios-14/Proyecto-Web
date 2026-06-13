@@ -19,16 +19,21 @@ export function reportFrontendError({
   source = "Frontend",
   message = "Error no controlado en el frontend.",
   detail = "",
+  exceptionType = "FrontendError",
+  httpMethod = "CLIENT",
+  path = window.location.pathname,
 } = {}) {
   const token = getAuthToken();
 
-  if (!token) return;
+  if (!token) return Promise.resolve(false);
 
   const cleanMessage = String(message || "Error no controlado en el frontend.").trim();
   const reportKey = `${source}|${cleanMessage}`;
   const now = Date.now();
 
-  if (reportKey === lastReportKey && now - lastReportAt < 5000) return;
+  if (reportKey === lastReportKey && now - lastReportAt < 5000) {
+    return Promise.resolve(false);
+  }
 
   lastReportKey = reportKey;
   lastReportAt = now;
@@ -37,6 +42,9 @@ export function reportFrontendError({
   const payload = {
     source,
     message: cleanMessage,
+    exceptionType,
+    httpMethod,
+    path,
     detail: normalizeDetail({
       detail,
       url: window.location.href,
@@ -52,7 +60,7 @@ export function reportFrontendError({
     }),
   };
 
-  fetch(`${API_BASE_URL}/error-logs`, {
+  return fetch(`${API_BASE_URL}/error-logs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -60,8 +68,11 @@ export function reportFrontendError({
     },
     body: JSON.stringify(payload),
     keepalive: true,
-  }).catch(() => {
+  })
+    .then((response) => response.ok)
+    .catch(() => {
     lastReportAt = Date.now();
+    return false;
   });
 }
 
@@ -70,6 +81,7 @@ export function installFrontendErrorReporting() {
     reportFrontendError({
       source: "Frontend window.error",
       message: event.message,
+      exceptionType: event.error?.name || "WindowError",
       detail: {
         filename: event.filename,
         lineno: event.lineno,
@@ -85,6 +97,7 @@ export function installFrontendErrorReporting() {
     reportFrontendError({
       source: "Frontend unhandledrejection",
       message: reason?.message || String(reason || "Promesa rechazada sin manejar."),
+      exceptionType: reason?.name || "UnhandledPromiseRejection",
       detail: reason?.stack || reason,
     });
   });

@@ -2,10 +2,15 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import {
   AlertTriangle,
+  BarChart3,
   BadgeCheck,
   Boxes,
+  ClipboardList,
   FileClock,
+  FileSpreadsheet,
+  KeyRound,
   ReceiptText,
+  RefreshCw,
   ShieldCheck,
   ShoppingCart,
   UserCog,
@@ -30,6 +35,8 @@ export default function HomePage() {
 
     showAlert(permissionMessage, "warning");
     window.history.replaceState({}, "", "/");
+    // showAlert is provided by the global alert context.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
   const cards = isAdministrator
@@ -76,6 +83,20 @@ export default function HomePage() {
           action: "Consultar errores",
           icon: AlertTriangle,
         },
+        {
+          to: "/reports",
+          title: "Reportes avanzados",
+          description: "Analiza ventas, vendedores, productos, clientes y stock.",
+          action: "Abrir reportes",
+          icon: BarChart3,
+        },
+        {
+          to: "/audit-logs",
+          title: "Auditoría general",
+          description: "Consulta accesos y operaciones relevantes realizadas por los usuarios.",
+          action: "Revisar auditoría",
+          icon: ClipboardList,
+        },
       ]
     : [
         {
@@ -100,7 +121,45 @@ export default function HomePage() {
           action: "Ver mis facturas",
           icon: FileClock,
         },
+        {
+          to: "/reports",
+          title: "Mis reportes",
+          description: "Consulta y exporta únicamente los resultados de tus propias ventas.",
+          action: "Ver mis resultados",
+          icon: BarChart3,
+        },
       ];
+
+  const bonusFeatures = [
+    {
+      title: "Renovación de sesión",
+      description: "JWT con refresh token, rotación y cierre seguro de sesión.",
+      icon: RefreshCw,
+      access: "Ambos roles",
+    },
+    {
+      title: "Recuperación de contraseña",
+      description: "Token temporal, expiración y bloqueo de contraseñas anteriores.",
+      icon: KeyRound,
+      access: "Acceso público seguro",
+    },
+    {
+      title: "Exportación avanzada",
+      description: "Facturas en PDF y reportes descargables en Excel.",
+      icon: FileSpreadsheet,
+      access: isAdministrator ? "Reporte global" : "Solo ventas propias",
+    },
+    ...(isAdministrator
+      ? [
+          {
+            title: "Auditoría y soporte",
+            description: "Trazabilidad de acciones y registro técnico de errores.",
+            icon: ClipboardList,
+            access: "Solo administrador",
+          },
+        ]
+      : []),
+  ];
 
   return (
     <Layout>
@@ -201,6 +260,38 @@ export default function HomePage() {
             <span>Auditoría</span>
             <span>Seguridad</span>
             <span>Soporte</span>
+          </div>
+        </section>
+
+        <section className="bonus-showcase">
+          <div className="dashboard-section-title">
+            <div>
+              <span className="page-eyebrow">Funcionalidades bonus</span>
+              <h2>Adicionales activos</h2>
+            </div>
+            <p>
+              Integrados con la API y protegidos según el rol autenticado.
+            </p>
+          </div>
+
+          <div className="bonus-feature-grid">
+            {bonusFeatures.map((feature) => {
+              const FeatureIcon = feature.icon;
+
+              return (
+                <article className="bonus-feature-card" key={feature.title}>
+                  <span className="bonus-feature-icon">
+                    <FeatureIcon size={22} />
+                  </span>
+                  <div>
+                    <span className="bonus-status">Implementado</span>
+                    <h3>{feature.title}</h3>
+                    <p>{feature.description}</p>
+                    <strong>{feature.access}</strong>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       </section>

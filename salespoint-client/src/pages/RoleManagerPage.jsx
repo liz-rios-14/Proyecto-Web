@@ -4,6 +4,7 @@ import DataTable from "../components/DataTable";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 import { getRoleLabel } from "../services/roleLabels";
 
 const emptyForm = {
@@ -20,10 +21,13 @@ const columns = [
 ];
 
 export default function RoleManagerPage() {
-  const { showAlert } = useAppAlert();
+  const { showAlert, showConfirm } = useAppAlert();
   const [roles, setRoles] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [formBaseline, setFormBaseline] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const isDirty = JSON.stringify(form) !== JSON.stringify(formBaseline);
+  useUnsavedChanges(isDirty);
 
   const loadRoles = async () => {
     try {
@@ -41,9 +45,21 @@ export default function RoleManagerPage() {
     loadRoles();
   }, []);
 
-  const resetForm = () => {
+  const clearForm = () => {
     setForm(emptyForm);
+    setFormBaseline(emptyForm);
     setEditingId(null);
+  };
+
+  const resetForm = async () => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Se perderán los datos ingresados. ¿Desea limpiar el formulario?",
+        { title: "Limpiar formulario", confirmText: "Sí, limpiar" }
+      );
+      if (!confirmed) return;
+    }
+    clearForm();
   };
 
   const saveRole = async () => {
@@ -54,6 +70,10 @@ export default function RoleManagerPage() {
       showAlert("El nombre del rol debe tener entre 2 y 50 caracteres.", "warning");
       return;
     }
+    if (!/^[A-Z0-9_-]+$/.test(name)) {
+      showAlert("El nombre del rol no permite espacios ni caracteres especiales.", "warning");
+      return;
+    }
     if (description.length > 200) {
       showAlert("La descripción no puede superar los 200 caracteres.", "warning");
       return;
@@ -61,6 +81,11 @@ export default function RoleManagerPage() {
 
     try {
       if (editingId) {
+        const confirmed = await showConfirm(
+          `¿Confirma actualizar el rol ${name}?`,
+          { title: "Actualizar rol", confirmText: "Sí, actualizar" }
+        );
+        if (!confirmed) return;
         await api.put(`/roles/${editingId}`, {
           name,
           description,
@@ -72,7 +97,7 @@ export default function RoleManagerPage() {
         showAlert("Rol creado correctamente.", "success");
       }
 
-      resetForm();
+      clearForm();
       await loadRoles();
     } catch (error) {
       showAlert(
@@ -82,13 +107,23 @@ export default function RoleManagerPage() {
     }
   };
 
-  const editRole = (role) => {
-    setEditingId(role.id);
-    setForm({
+  const editRole = async (role) => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Hay cambios sin guardar. ¿Desea descartarlos y editar otro rol?",
+        { title: "Cambiar de rol", confirmText: "Sí, descartar" }
+      );
+      if (!confirmed) return;
+    }
+
+    const nextForm = {
       name: role.name,
       description: role.description ?? "",
       isActive: role.isActive,
-    });
+    };
+    setEditingId(role.id);
+    setForm(nextForm);
+    setFormBaseline(nextForm);
   };
 
   return (
@@ -103,7 +138,15 @@ export default function RoleManagerPage() {
             placeholder="Nombre del rol"
             maxLength="50"
             value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value.toUpperCase() })}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                name: event.target.value
+                  .replace(/\s/g, "")
+                  .replace(/[^a-zA-Z0-9_-]/g, "")
+                  .toUpperCase(),
+              })
+            }
           />
           <input
             placeholder="Descripción"

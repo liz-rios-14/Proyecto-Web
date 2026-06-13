@@ -34,9 +34,9 @@ public sealed class AuditLogDto
 
 public sealed class AuditLogSearchRequest
 {
-    public string UserName { get; set; } = string.Empty;
-    public string Action { get; set; } = string.Empty;
-    public string EntityName { get; set; } = string.Empty;
+    public string? UserName { get; set; }
+    public string? Action { get; set; }
+    public string? EntityName { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public int PageNumber { get; set; } = 1;

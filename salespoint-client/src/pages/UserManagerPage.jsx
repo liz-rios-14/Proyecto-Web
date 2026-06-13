@@ -4,7 +4,14 @@ import DataTable from "../components/DataTable";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import PasswordInput from "../components/PasswordInput";
+import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 import { getRoleLabel } from "../services/roleLabels";
+import {
+  normalizeSpaces,
+  sanitizePersonNames,
+  sanitizeUserName,
+} from "../utils/inputSanitizers";
 
 const emptyForm = {
   fullName: "",
@@ -31,8 +38,11 @@ export default function UserManagerPage() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [formBaseline, setFormBaseline] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
+  const isDirty = JSON.stringify(form) !== JSON.stringify(formBaseline);
+  useUnsavedChanges(isDirty);
 
   const loadData = async () => {
     try {
@@ -75,16 +85,37 @@ export default function UserManagerPage() {
     );
   }, [search, users]);
 
-  const resetForm = () => {
+  const clearForm = () => {
     setForm(emptyForm);
+    setFormBaseline(emptyForm);
     setEditingId(null);
+  };
+
+  const resetForm = async () => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Se perderán los datos ingresados. ¿Desea limpiar el formulario?",
+        {
+          title: "Limpiar formulario",
+          confirmText: "Sí, limpiar",
+          cancelText: "No, mantener",
+        }
+      );
+      if (!confirmed) return;
+    }
+    clearForm();
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    let cleanValue = value;
+    if (name === "fullName") cleanValue = sanitizePersonNames(value);
+    if (name === "userName") cleanValue = sanitizeUserName(value);
+    if (name === "email") cleanValue = value.trimStart().toLowerCase();
+
     setForm((current) => ({
       ...current,
-      [name]: name === "isActive" ? value === "true" : value,
+      [name]: name === "isActive" ? value === "true" : cleanValue,
     }));
   };
 
@@ -95,8 +126,14 @@ export default function UserManagerPage() {
     if (form.fullName.trim().length < 3) {
       return "El nombre completo debe tener al menos 3 caracteres.";
     }
+    if (!/^[\p{L}]+(?: [\p{L}]+)*$/u.test(form.fullName.trim())) {
+      return "Los nombres y apellidos solo permiten letras y un espacio entre palabras.";
+    }
     if (form.userName.trim().length < 3) {
       return "El usuario debe tener al menos 3 caracteres.";
+    }
+    if (!/^[\p{L}0-9._-]+$/u.test(form.userName.trim())) {
+      return "El usuario no permite espacios; use letras, números, punto, guion o guion bajo.";
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       return "Ingrese un correo válido.";
@@ -131,7 +168,7 @@ export default function UserManagerPage() {
     }
 
     const request = {
-      fullName: form.fullName.trim(),
+      fullName: normalizeSpaces(form.fullName),
       userName: form.userName.trim(),
       email: form.email.trim(),
       roleId: Number(form.roleId),
@@ -140,6 +177,14 @@ export default function UserManagerPage() {
 
     try {
       if (editingId) {
+        const confirmed = await showConfirm(
+          `¿Confirma guardar los cambios del usuario ${form.userName}?`,
+          {
+            title: "Actualizar usuario",
+            confirmText: "Sí, actualizar",
+          }
+        );
+        if (!confirmed) return;
         await api.put(`/users/${editingId}`, request);
         showAlert("Usuario actualizado correctamente.", "success");
       } else {
@@ -147,7 +192,7 @@ export default function UserManagerPage() {
         showAlert("Usuario creado correctamente.", "success");
       }
 
-      resetForm();
+      clearForm();
       await loadData();
     } catch (error) {
       showAlert(
@@ -157,9 +202,16 @@ export default function UserManagerPage() {
     }
   };
 
-  const editUser = (user) => {
-    setEditingId(user.id);
-    setForm({
+  const editUser = async (user) => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Hay cambios sin guardar. ¿Desea descartarlos y editar otro usuario?",
+        { title: "Cambiar de usuario", confirmText: "Sí, descartar" }
+      );
+      if (!confirmed) return;
+    }
+
+    const nextForm = {
       fullName: user.fullName,
       userName: user.userName,
       email: user.email,
@@ -167,8 +219,33 @@ export default function UserManagerPage() {
       confirmPassword: "",
       roleId: String(user.roleId),
       isActive: user.isActive,
-    });
+    };
+    setEditingId(user.id);
+    setForm(nextForm);
+    setFormBaseline(nextForm);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const activateUser = async (user) => {
+    const confirmed = await showConfirm(
+      `¿Desea reactivar al usuario ${user.userName}? Podrá volver a iniciar sesión.`,
+      {
+        title: "Activar usuario",
+        confirmText: "Sí, activar",
+      }
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.post(`/users/${user.id}/activate`);
+      showAlert("Usuario activado correctamente.", "success");
+      await loadData();
+    } catch (error) {
+      showAlert(
+        getApiErrorMessage(error, "No se pudo activar el usuario."),
+        "error"
+      );
+    }
   };
 
   const disableUser = async (user) => {
@@ -225,7 +302,7 @@ export default function UserManagerPage() {
         <h2>{editingId ? "Editar usuario" : "Nuevo usuario"}</h2>
 
         <div className="form-grid">
-          <input name="fullName" maxLength="120" placeholder="Nombre completo" value={form.fullName} onChange={handleChange} />
+          <input name="fullName" maxLength="120" placeholder="Nombres y apellidos" value={form.fullName} onChange={handleChange} />
           <input name="userName" maxLength="60" placeholder="Nombre de usuario" value={form.userName} onChange={handleChange} />
           <input name="email" type="email" maxLength="120" placeholder="Correo" value={form.email} onChange={handleChange} />
           <select name="roleId" value={form.roleId} onChange={handleChange}>
@@ -239,8 +316,8 @@ export default function UserManagerPage() {
 
           {!editingId && (
             <>
-              <input name="password" type="password" maxLength="10" placeholder="Contraseña" value={form.password} onChange={handleChange} />
-              <input name="confirmPassword" type="password" maxLength="10" placeholder="Confirmar contraseña" value={form.confirmPassword} onChange={handleChange} />
+              <PasswordInput name="password" maxLength={10} autoComplete="new-password" placeholder="Contraseña" value={form.password} onChange={handleChange} />
+              <PasswordInput name="confirmPassword" maxLength={10} autoComplete="new-password" placeholder="Confirmar contraseña" value={form.confirmPassword} onChange={handleChange} />
             </>
           )}
 
@@ -297,6 +374,11 @@ export default function UserManagerPage() {
               {user.isActive && user.roleName !== "ADMINISTRATOR" && (
                 <button className="table-action delete-button" onClick={() => disableUser(user)}>
                   Desactivar
+                </button>
+              )}
+              {!user.isActive && (
+                <button className="table-action invoice-button" onClick={() => activateUser(user)}>
+                  Activar
                 </button>
               )}
             </>

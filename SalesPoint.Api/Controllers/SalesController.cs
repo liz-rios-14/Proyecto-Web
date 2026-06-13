@@ -34,14 +34,14 @@ public class SalesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "ADMINISTRATOR,SELLER")]
+    [Authorize(Roles = "SELLER")]
     public async Task<IActionResult> Create([FromBody] SaleCreateDto request)
     {
         return Ok(await _service.CreateAsync(request));
     }
 
     [HttpPost("{id}/confirm")]
-    [Authorize(Roles = "ADMINISTRATOR,SELLER")]
+    [Authorize(Roles = "SELLER")]
     public async Task<IActionResult> Confirm(int id)
     {
         return Ok(await _service.ConfirmAsync(id));

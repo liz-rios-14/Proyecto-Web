@@ -16,6 +16,7 @@ import "./styles/dashboard.css";
 import "./styles/error-logs.css";
 import "./styles/theme.css";
 import "./styles/print.css";
+import "./styles/bonus.css";
 
 import { AppAlertProvider } from "./components/AppAlert";
 

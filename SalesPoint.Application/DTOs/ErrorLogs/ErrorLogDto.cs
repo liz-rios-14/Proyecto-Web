@@ -18,6 +18,9 @@ public sealed class CreateErrorLogRequest
     public string Source { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string Detail { get; set; } = string.Empty;
+    public string ExceptionType { get; set; } = string.Empty;
+    public string HttpMethod { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
 }
 
 public sealed class ErrorLogQuery

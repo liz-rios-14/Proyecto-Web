@@ -1,6 +1,7 @@
 using SalesPoint.Application.DTOs.Common;
 using SalesPoint.Application.DTOs.ErrorLogs;
 using SalesPoint.Application.Interfaces.Repositories;
+using SalesPoint.Application.Interfaces.Security;
 using SalesPoint.Application.Interfaces.Services;
 using SalesPoint.Domain.Entities;
 using SalesPoint.Domain.Exceptions;
@@ -11,10 +12,14 @@ public sealed class ErrorLogService : IErrorLogService
 {
     private static readonly int[] AllowedPageSizes = [10, 15, 20, 30];
     private readonly IErrorLogRepository _repository;
+    private readonly ICurrentUserContext _currentUser;
 
-    public ErrorLogService(IErrorLogRepository repository)
+    public ErrorLogService(
+        IErrorLogRepository repository,
+        ICurrentUserContext currentUser)
     {
         _repository = repository;
+        _currentUser = currentUser;
     }
 
     public async Task<List<ErrorLogDto>> GetAllAsync()
@@ -27,7 +32,14 @@ public sealed class ErrorLogService : IErrorLogService
         if (request is null)
             throw new DomainException("Los datos del error son obligatorios.");
 
-        var log = new ErrorLog(request.Source, request.Message, request.Detail);
+        var log = new ErrorLog(
+            request.Source,
+            request.Message,
+            request.Detail,
+            request.ExceptionType,
+            _currentUser.UserId,
+            request.HttpMethod,
+            request.Path);
         await _repository.CreateAsync(log);
         return Map(log);
     }

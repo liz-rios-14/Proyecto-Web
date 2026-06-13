@@ -5,6 +5,7 @@ import Pagination from "../components/Pagination";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import { reportFrontendError } from "../api/errorReporter";
 
 const searchFields = [
   { key: "", label: "Todos los campos" },
@@ -139,6 +140,29 @@ export default function ErrorLogPage() {
     loadLogs(1, "", "");
   };
 
+  const createDiagnosticError = async () => {
+    const registered = await reportFrontendError({
+      source: "Frontend diagnóstico",
+      message: "Error de prueba controlado generado desde la pantalla administrativa.",
+      exceptionType: "FrontendDiagnosticError",
+      httpMethod: "CLIENT",
+      path: window.location.pathname,
+      detail: {
+        code: "FRONTEND_TEST_ERROR",
+        explanation: "Prueba controlada: la aplicación debe continuar funcionando.",
+      },
+    });
+
+    if (!registered) {
+      showAlert("No se pudo registrar el error de prueba.", "error");
+      return;
+    }
+
+    showAlert("Error de prueba registrado sin detener la aplicación.", "success");
+    setPage(1);
+    await loadLogs(1, "", "");
+  };
+
   return (
     <Layout>
       <section className="page-heading">
@@ -194,6 +218,15 @@ export default function ErrorLogPage() {
             disabled={loading}
           >
             Limpiar búsqueda
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={createDiagnosticError}
+            disabled={loading}
+          >
+            Registrar error de prueba
           </button>
 
           <label className="page-size-control">

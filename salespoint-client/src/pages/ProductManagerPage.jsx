@@ -6,6 +6,7 @@ import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 
 const emptyProductForm = {
   name: "",
@@ -33,12 +34,15 @@ export default function ProductManagerPage() {
   const { showAlert, showConfirm } = useAppAlert();
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(emptyProductForm);
+  const [formBaseline, setFormBaseline] = useState(emptyProductForm);
   const [editingId, setEditingId] = useState(null);
   const [searchField, setSearchField] = useState("name");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const isDirty = JSON.stringify(form) !== JSON.stringify(formBaseline);
+  useUnsavedChanges(isDirty);
 
   const saveButtonRef = useRef(null);
   const cleanButtonRef = useRef(null);
@@ -136,9 +140,21 @@ export default function ProductManagerPage() {
     setForm({ ...form, [name]: value });
   };
 
-  const resetForm = () => {
+  const clearForm = () => {
     setForm(emptyProductForm);
+    setFormBaseline(emptyProductForm);
     setEditingId(null);
+  };
+
+  const resetForm = async () => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Se perderán los datos ingresados. ¿Desea limpiar el formulario?",
+        { title: "Limpiar formulario", confirmText: "Sí, limpiar" }
+      );
+      if (!confirmed) return;
+    }
+    clearForm();
   };
 
   const saveProduct = async () => {
@@ -224,6 +240,11 @@ export default function ProductManagerPage() {
       }
 
       if (editingId) {
+        const confirmed = await showConfirm(
+          `¿Confirma actualizar el producto ${request.name}?`,
+          { title: "Actualizar producto", confirmText: "Sí, actualizar" }
+        );
+        if (!confirmed) return;
         await api.put(`/products/${editingId}`, request);
         showAlert("Producto actualizado correctamente.", "success");
       } else {
@@ -231,7 +252,7 @@ export default function ProductManagerPage() {
         showAlert("Producto creado correctamente.", "success");
       }
 
-      resetForm();
+      clearForm();
       loadProducts(page);
     } catch (error) {
       console.error(error);
@@ -242,14 +263,23 @@ export default function ProductManagerPage() {
     }
   };
 
-  const editProduct = (product) => {
-    setEditingId(product.id);
+  const editProduct = async (product) => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Hay cambios sin guardar. ¿Desea descartarlos y editar otro producto?",
+        { title: "Cambiar de producto", confirmText: "Sí, descartar" }
+      );
+      if (!confirmed) return;
+    }
 
-    setForm({
+    const nextForm = {
       name: product.name,
       price: String(product.price),
       stock: String(product.stock),
-    });
+    };
+    setEditingId(product.id);
+    setForm(nextForm);
+    setFormBaseline(nextForm);
   };
 
   const deleteProduct = async (id) => {
@@ -316,6 +346,12 @@ export default function ProductManagerPage() {
   };
 
   const activateProduct = async (id) => {
+    const confirmed = await showConfirm(
+      "¿Desea activar nuevamente este producto para permitir su venta?",
+      { title: "Activar producto", confirmText: "Sí, activar" }
+    );
+    if (!confirmed) return;
+
     try {
       const response = await api.post(`/products/${id}/activate`);
       showAlert(response.data?.message ?? "Producto activado correctamente.", "success");

@@ -58,7 +58,12 @@ public sealed class User : BaseEntity
         if (string.IsNullOrWhiteSpace(fullName))
             throw new DomainException("El nombre del usuario es obligatorio.");
 
-        FullName = fullName.Trim().ToUpperInvariant();
+        var cleanFullName = Regex.Replace(fullName.Trim(), @"\s+", " ");
+
+        if (!Regex.IsMatch(cleanFullName, @"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?: [A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$"))
+            throw new DomainException("Los nombres y apellidos solo pueden contener letras y espacios simples.");
+
+        FullName = cleanFullName.ToUpperInvariant();
     }
 
     public void SetUserName(string userName)
@@ -66,7 +71,12 @@ public sealed class User : BaseEntity
         if (string.IsNullOrWhiteSpace(userName))
             throw new DomainException("El nombre de usuario es obligatorio.");
 
-        UserName = userName.Trim().ToLowerInvariant();
+        var cleanUserName = userName.Trim().ToLowerInvariant();
+
+        if (!Regex.IsMatch(cleanUserName, @"^[a-z0-9._-]+$"))
+            throw new DomainException("El usuario no puede contener espacios.");
+
+        UserName = cleanUserName;
     }
 
     public void SetUsername(string userName)

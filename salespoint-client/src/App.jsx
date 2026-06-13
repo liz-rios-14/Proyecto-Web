@@ -13,11 +13,13 @@ import ErrorLogPage from "./pages/ErrorLogPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { UnsavedChangesProvider } from "./components/UnsavedChangesContext";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <UnsavedChangesProvider>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -116,7 +118,8 @@ export default function App() {
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </UnsavedChangesProvider>
     </BrowserRouter>
   );
 }

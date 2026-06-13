@@ -121,6 +121,35 @@ input[type="number"] {
   font-weight: 700;
 }
 
+.password-input {
+  position: relative;
+  min-width: 0;
+}
+
+.password-input input {
+  padding-right: 52px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  color: #475569;
+  background: transparent;
+  box-shadow: none;
+}
+
+.password-toggle:hover {
+  color: #1d4ed8;
+  background: #dbeafe;
+  box-shadow: none;
+  transform: none;
+}
+
 body.dark-mode .field-help {
   color: #cbd5e1;
 }
@@ -144,24 +173,95 @@ body.dark-mode .field-help {
 }
 
 @media print {
-  .no-print,
-  .sidebar,
-  .navbar {
+  body.printing-report {
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  body.printing-report * {
+    visibility: hidden !important;
+  }
+
+  body.printing-report .report-print-area,
+  body.printing-report .report-print-area * {
+    visibility: visible !important;
+  }
+
+  body.printing-report .report-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+
+  body.printing-report .app-layout,
+  body.printing-report .main-content,
+  body.printing-report .container,
+  body.printing-report .module-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  body.printing-report .no-print,
+  body.printing-report .sidebar,
+  body.printing-report .navbar,
+  body.printing-report .module-heading {
     display: none !important;
   }
 
-  .report-print-area .card {
-    break-inside: avoid;
+  body.printing-report .report-print-area .card {
+    display: block !important;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+    margin: 0 0 12px;
+    padding: 14px;
+    border-radius: 0;
     box-shadow: none;
     border: 1px solid #cbd5e1;
+    color: #000000 !important;
+    background: #ffffff !important;
   }
 
-  .report-print-area .table-wrapper {
+  body.printing-report .report-print-area h1,
+  body.printing-report .report-print-area h2,
+  body.printing-report .report-print-area p,
+  body.printing-report .report-print-area strong,
+  body.printing-report .report-print-area th,
+  body.printing-report .report-print-area td {
+    color: #000000 !important;
+  }
+
+  body.printing-report .report-print-area .table-wrapper {
     overflow: visible;
   }
 
-  .report-print-area .data-table {
+  body.printing-report .report-print-area .data-table {
+    width: 100% !important;
     min-width: 0;
     font-size: 10px;
+    border-collapse: collapse;
+  }
+
+  body.printing-report .report-print-area .data-table th {
+    background: #e2e8f0 !important;
+  }
+
+  body.printing-report .report-print-area .data-table th,
+  body.printing-report .report-print-area .data-table td {
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
   }
 }

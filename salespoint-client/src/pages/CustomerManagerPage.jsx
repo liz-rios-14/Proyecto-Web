@@ -6,7 +6,9 @@ import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
+import { sanitizePersonNames } from "../utils/inputSanitizers";
 import { getAuthRole } from "../services/authStorage";
 
 const emptyCustomerForm = {
@@ -44,12 +46,15 @@ export default function CustomerManagerPage() {
   const isAdministrator = getAuthRole() === "ADMINISTRATOR";
   const [customers, setCustomers] = useState([]);
   const [form, setForm] = useState(emptyCustomerForm);
+  const [formBaseline, setFormBaseline] = useState(emptyCustomerForm);
   const [editingId, setEditingId] = useState(null);
   const [searchField, setSearchField] = useState("firstName");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const isDirty = JSON.stringify(form) !== JSON.stringify(formBaseline);
+  useUnsavedChanges(isDirty);
 
   const saveButtonRef = useRef(null);
   const cleanButtonRef = useRef(null);
@@ -117,10 +122,7 @@ export default function CustomerManagerPage() {
     if (name === "firstName" || name === "lastName") {
       setForm({
         ...form,
-        [name]: value
-          .replace(/[^\p{L}\s]/gu, "")
-          .toUpperCase()
-          .slice(0, 40),
+        [name]: sanitizePersonNames(value, 40),
       });
       return;
     }
@@ -148,9 +150,21 @@ export default function CustomerManagerPage() {
     setForm({ ...form, [name]: value });
   };
 
-  const resetForm = () => {
+  const clearForm = () => {
     setForm(emptyCustomerForm);
+    setFormBaseline(emptyCustomerForm);
     setEditingId(null);
+  };
+
+  const resetForm = async () => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Se perderán los datos ingresados. ¿Desea limpiar el formulario?",
+        { title: "Limpiar formulario", confirmText: "Sí, limpiar" }
+      );
+      if (!confirmed) return;
+    }
+    clearForm();
   };
 
   const saveCustomer = async () => {
@@ -266,6 +280,11 @@ export default function CustomerManagerPage() {
       }
 
       if (editingId) {
+        const confirmed = await showConfirm(
+          `¿Confirma actualizar al cliente ${request.firstName} ${request.lastName}?`,
+          { title: "Actualizar cliente", confirmText: "Sí, actualizar" }
+        );
+        if (!confirmed) return;
         await api.put(`/customers/${editingId}`, request);
         showAlert("Cliente actualizado correctamente.", "success");
       } else {
@@ -273,7 +292,7 @@ export default function CustomerManagerPage() {
         showAlert("Cliente creado correctamente.", "success");
       }
 
-      resetForm();
+      clearForm();
       loadCustomers(page);
     } catch (error) {
       console.error(error);
@@ -284,17 +303,26 @@ export default function CustomerManagerPage() {
     }
   };
 
-  const editCustomer = (customer) => {
-    setEditingId(customer.id);
+  const editCustomer = async (customer) => {
+    if (isDirty) {
+      const confirmed = await showConfirm(
+        "Hay cambios sin guardar. ¿Desea descartarlos y editar otro cliente?",
+        { title: "Cambiar de cliente", confirmText: "Sí, descartar" }
+      );
+      if (!confirmed) return;
+    }
 
-    setForm({
+    const nextForm = {
       firstName: customer.firstName,
       lastName: customer.lastName,
       cedula: customer.cedula ?? "",
       phone: customer.phone,
       address: customer.address,
       email: customer.email,
-    });
+    };
+    setEditingId(customer.id);
+    setForm(nextForm);
+    setFormBaseline(nextForm);
   };
 
   const deleteCustomer = async (id) => {
@@ -361,6 +389,12 @@ export default function CustomerManagerPage() {
   };
 
   const activateCustomer = async (id) => {
+    const confirmed = await showConfirm(
+      "¿Desea activar nuevamente este cliente?",
+      { title: "Activar cliente", confirmText: "Sí, activar" }
+    );
+    if (!confirmed) return;
+
     try {
       const response = await api.post(`/customers/${id}/activate`);
       showAlert(response.data?.message ?? "Cliente activado correctamente.", "success");
@@ -393,8 +427,8 @@ export default function CustomerManagerPage() {
         <h2>{editingId ? "Editar cliente" : "Nuevo cliente"}</h2>
 
         <div className="form-grid">
-          <input name="firstName" placeholder="Nombre" maxLength="40" value={form.firstName} onChange={handleChange} />
-          <input name="lastName" placeholder="Apellido" maxLength="40" value={form.lastName} onChange={handleChange} />
+          <input name="firstName" placeholder="Nombres" maxLength="40" value={form.firstName} onChange={handleChange} />
+          <input name="lastName" placeholder="Apellidos" maxLength="40" value={form.lastName} onChange={handleChange} />
           <input name="cedula" placeholder="Cédula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
           <input name="phone" placeholder="Telefono" inputMode="numeric" maxLength="10" value={form.phone} onChange={handleChange} />
           <input name="address" placeholder="Direccion" maxLength="150" value={form.address} onChange={handleChange} />

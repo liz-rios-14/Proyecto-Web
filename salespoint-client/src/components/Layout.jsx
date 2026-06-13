@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import { useSafeNavigation } from "./UnsavedChangesContext";
 
 const pageMetadata = {
   "/sales": {
@@ -58,6 +59,7 @@ const pageMetadata = {
 
 export default function Layout({ children }) {
   const navigate = useNavigate();
+  const safeNavigation = useSafeNavigation();
   const location = useLocation();
   const metadata = pageMetadata[location.pathname];
   const PageIcon = metadata?.icon;
@@ -69,27 +71,27 @@ export default function Layout({ children }) {
       switch (event.key) {
         case "1":
           event.preventDefault();
-          navigate("/");
+          safeNavigation?.requestNavigation("/") ?? navigate("/");
           break;
 
         case "2":
           event.preventDefault();
-          navigate("/sales");
+          safeNavigation?.requestNavigation("/sales") ?? navigate("/sales");
           break;
 
         case "3":
           event.preventDefault();
-          navigate("/customers");
+          safeNavigation?.requestNavigation("/customers") ?? navigate("/customers");
           break;
 
         case "4":
           event.preventDefault();
-          navigate("/products");
+          safeNavigation?.requestNavigation("/products") ?? navigate("/products");
           break;
 
         case "5":
           event.preventDefault();
-          navigate("/invoices");
+          safeNavigation?.requestNavigation("/invoices") ?? navigate("/invoices");
           break;
 
         default:
@@ -102,7 +104,7 @@ export default function Layout({ children }) {
     return () => {
       window.removeEventListener("keydown", handleGlobalShortcuts);
     };
-  }, [navigate]);
+  }, [navigate, safeNavigation]);
 
   return (
     <div className="app-layout">

@@ -24,10 +24,10 @@ public sealed class ReportsController : ControllerBase
     [HttpGet("export/excel")]
     public async Task<IActionResult> ExportExcel([FromQuery] ReportRequest request)
     {
-        var file = await _service.ExportCsvAsync(request);
+        var file = await _service.ExportExcelAsync(request);
         return File(
             file,
-            "text/csv; charset=utf-8",
-            $"reporte-ventas-{request.StartDate:yyyyMMdd}-{request.EndDate:yyyyMMdd}.csv");
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"reporte-ventas-{request.StartDate:yyyyMMdd}-{request.EndDate:yyyyMMdd}.xlsx");
     }
 }

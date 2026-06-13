@@ -4,10 +4,11 @@ import { resetPassword } from "../api/authApi";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import AuthLayout from "../components/AuthLayout";
+import PasswordInput from "../components/PasswordInput";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
-  const { showAlert } = useAppAlert();
+  const { showAlert, showConfirm } = useAppAlert();
 
   const [form, setForm] = useState({
     email: "",
@@ -102,6 +103,16 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    const confirmed = await showConfirm(
+      "¿Confirma que desea establecer esta nueva contraseña?",
+      {
+        title: "Confirmar nueva contraseña",
+        confirmText: "Sí, cambiar",
+        cancelText: "No, revisar",
+      }
+    );
+    if (!confirmed) return;
+
     try {
       setLoading(true);
 
@@ -154,9 +165,11 @@ export default function ResetPasswordPage() {
           />
 
           <label htmlFor="newPassword">Nueva contraseña</label>
-          <input
+          <PasswordInput
             id="newPassword"
-            type="password"
+            name="newPassword"
+            maxLength={10}
+            autoComplete="new-password"
             placeholder="Ejemplo: Nueva123!"
             value={form.newPassword}
             onChange={(event) => updateField("newPassword", event.target.value)}
@@ -169,9 +182,11 @@ export default function ResetPasswordPage() {
           </div>
 
           <label htmlFor="confirmPassword">Confirmar contraseña</label>
-          <input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
+            name="confirmPassword"
+            maxLength={10}
+            autoComplete="new-password"
             placeholder="Repita la nueva contraseña"
             value={form.confirmPassword}
             onChange={(event) =>

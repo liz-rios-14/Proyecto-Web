@@ -63,7 +63,7 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "ADMINISTRATOR,SELLER")]
+    [Authorize(Roles = "SELLER")]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest request)
     {
         var result = await _invoiceService.CreateAsync(request);

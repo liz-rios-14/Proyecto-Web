@@ -5,6 +5,7 @@ import { getApiErrorMessage } from "../api/apiError";
 import { saveAuthSession } from "../services/authStorage";
 import { useAppAlert } from "../components/AppAlert";
 import AuthLayout from "../components/AuthLayout";
+import PasswordInput from "../components/PasswordInput";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -109,9 +110,10 @@ export default function LoginPage() {
             Contraseña
           </label>
 
-          <input
+          <PasswordInput
             id="password"
-            type="password"
+            name="password"
+            autoComplete="current-password"
             placeholder="Ingrese su contraseña"
             value={form.password}
             onChange={(event) =>

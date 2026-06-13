@@ -4,8 +4,14 @@ import DataTable from "../components/DataTable";
 import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
+import { getAuthRole } from "../services/authStorage";
 
-const today = new Date().toISOString().slice(0, 10);
+const formatInputDate = (date) => {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+};
+
+const today = formatInputDate(new Date());
 const monthStart = `${today.slice(0, 8)}01`;
 const moneyColumns = [
   { key: "dateLabel", label: "Fecha" },
@@ -17,10 +23,20 @@ const moneyColumns = [
 
 export default function ReportsPage() {
   const { showAlert } = useAppAlert();
+  const isAdministrator = getAuthRole() === "ADMINISTRATOR";
   const [startDate, setStartDate] = useState(monthStart);
   const [endDate, setEndDate] = useState(today);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  const applyRange = (days) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    setStartDate(formatInputDate(start));
+    setEndDate(formatInputDate(end));
+  };
 
   const validate = () => {
     if (!startDate || !endDate) {
@@ -56,6 +72,7 @@ export default function ReportsPage() {
   const exportExcel = async () => {
     if (!validate()) return;
     try {
+      setExportingExcel(true);
       const response = await api.get("/reports/export/excel", {
         params: { startDate, endDate },
         responseType: "blob",
@@ -63,12 +80,16 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(response.data);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `reporte-ventas-${startDate}-${endDate}.csv`;
+      link.download = `reporte-ventas-${startDate}-${endDate}.xlsx`;
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(url);
-      showAlert("Reporte exportado correctamente.", "success");
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showAlert("Archivo Excel descargado correctamente.", "success");
     } catch (error) {
       showAlert(getApiErrorMessage(error, "No se pudo exportar el reporte."), "error");
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -77,7 +98,15 @@ export default function ReportsPage() {
       showAlert("No existen datos para exportar.", "warning");
       return;
     }
-    window.print();
+
+    document.body.classList.add("printing-report");
+    const finishPrinting = () => {
+      document.body.classList.remove("printing-report");
+      window.removeEventListener("afterprint", finishPrinting);
+    };
+
+    window.addEventListener("afterprint", finishPrinting);
+    window.requestAnimationFrame(() => window.print());
   };
 
   return (
@@ -91,27 +120,98 @@ export default function ReportsPage() {
       </section>
 
       <div className="card no-print">
+        <div className="feature-scope-banner">
+          <div>
+            <strong>
+              {isAdministrator ? "Alcance global" : "Alcance personal"}
+            </strong>
+            <span>
+              {isAdministrator
+                ? "El reporte incluye las ventas de todos los vendedores."
+                : "Por seguridad, solo se incluyen las ventas realizadas por su usuario."}
+            </span>
+          </div>
+          <span className="scope-badge">
+            {isAdministrator ? "ADMINISTRADOR" : "VENDEDOR"}
+          </span>
+        </div>
+
+        <div className="report-quick-ranges">
+          <span>Rangos rápidos:</span>
+          <button type="button" className="filter-chip" onClick={() => applyRange(1)}>
+            Hoy
+          </button>
+          <button type="button" className="filter-chip" onClick={() => applyRange(7)}>
+            7 días
+          </button>
+          <button type="button" className="filter-chip" onClick={() => applyRange(30)}>
+            30 días
+          </button>
+          <button
+            type="button"
+            className="filter-chip"
+            onClick={() => {
+              setStartDate(monthStart);
+              setEndDate(today);
+            }}
+          >
+            Mes actual
+          </button>
+        </div>
+
         <div className="report-filter-grid">
-          <label>Fecha inicio<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
-          <label>Fecha fin<input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>
+          <label>
+            Fecha inicio
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+          <label>
+            Fecha fin
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
           <button type="button" disabled={loading} onClick={search}>{loading ? "Buscando..." : "Buscar"}</button>
           <button type="button" className="secondary-button" onClick={exportPdf}>Exportar PDF</button>
-          <button type="button" className="secondary-button" onClick={exportExcel}>Exportar Excel</button>
+          <button
+            type="button"
+            className="excel-export-button"
+            disabled={exportingExcel}
+            onClick={exportExcel}
+          >
+            {exportingExcel ? "Generando Excel..." : "Descargar Excel (.xlsx)"}
+          </button>
         </div>
       </div>
 
       {report && (
         <section className="report-print-area">
-          <div className="card">
+          <div className="card report-document-heading">
             <h1>Reporte de ventas</h1>
-            <p>Desde {startDate} hasta {endDate}</p>
+            <p>
+              Desde {startDate} hasta {endDate} ·{" "}
+              {isAdministrator ? "Todas las ventas" : "Ventas del usuario actual"}
+            </p>
           </div>
-          <div className="card report-totals">
-            <h2>Totales generales</h2>
-            <strong>Facturas: {report.totals.invoiceCount}</strong>
-            <strong>Subtotal: ${Number(report.totals.subtotal).toFixed(2)}</strong>
-            <strong>IVA: ${Number(report.totals.tax).toFixed(2)}</strong>
-            <strong>Total: ${Number(report.totals.total).toFixed(2)}</strong>
+
+          <div className="report-kpi-grid">
+            <article className="report-kpi">
+              <span>Facturas</span>
+              <strong>{report.totals.invoiceCount}</strong>
+              <small>Documentos emitidos</small>
+            </article>
+            <article className="report-kpi">
+              <span>Subtotal</span>
+              <strong>${Number(report.totals.subtotal).toFixed(2)}</strong>
+              <small>Antes de impuestos</small>
+            </article>
+            <article className="report-kpi">
+              <span>IVA</span>
+              <strong>${Number(report.totals.tax).toFixed(2)}</strong>
+              <small>Impuesto acumulado</small>
+            </article>
+            <article className="report-kpi report-kpi-main">
+              <span>Total vendido</span>
+              <strong>${Number(report.totals.total).toFixed(2)}</strong>
+              <small>Valor final del período</small>
+            </article>
           </div>
           <ReportTable title="Ventas por fecha" columns={moneyColumns} data={(report.salesByDate || []).map((x) => ({ ...x, dateLabel: x.date.slice(0, 10) }))} />
           <ReportTable title="Ventas por vendedor" columns={[{ key: "sellerName", label: "Vendedor" }, { key: "invoiceCount", label: "Facturas" }, { key: "total", label: "Total", type: "money" }]} data={report.salesBySeller || []} />

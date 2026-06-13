@@ -25,11 +25,13 @@ import {
 import { logout as revokeSession } from "../api/authApi";
 import { useAppAlert } from "./AppAlert";
 import { getRoleLabel } from "../services/roleLabels";
+import { useSafeNavigation } from "./UnsavedChangesContext";
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { showAlert, showConfirm } = useAppAlert();
+  const safeNavigation = useSafeNavigation();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [closingSession, setClosingSession] = useState(false);
   const authUser = getAuthUser();
@@ -44,7 +46,9 @@ export default function Sidebar() {
 
     const hasDraft = Boolean(localStorage.getItem(draftKey));
     const confirmed = await showConfirm(
-      hasDraft
+      safeNavigation?.isDirty
+        ? "Existen cambios sin guardar. Si cierra sesión se perderán. ¿Desea continuar?"
+        : hasDraft
         ? "Existe una venta en progreso. Si cierra sesión se guardará como borrador."
         : "¿Seguro que desea cerrar la sesión actual?",
       {
@@ -128,6 +132,12 @@ export default function Sidebar() {
   const currentShortcuts =
     shortcutsByPath[location.pathname] || shortcutsByPath["/"];
 
+  const handleNavigation = async (event, path) => {
+    if (!safeNavigation?.isDirty) return;
+    event.preventDefault();
+    await safeNavigation.requestNavigation(path);
+  };
+
   return (
     <aside className="sidebar">
       <div>
@@ -143,60 +153,60 @@ export default function Sidebar() {
         </div>
 
         <nav className="sidebar-nav">
-          <NavLink to="/" className="sidebar-link">
+          <NavLink to="/" className="sidebar-link" onClick={(event) => handleNavigation(event, "/")}>
             <Home size={19} />
             <span>Inicio</span>
           </NavLink>
 
           {isSeller && (
-            <NavLink to="/sales" className="sidebar-link">
+            <NavLink to="/sales" className="sidebar-link" onClick={(event) => handleNavigation(event, "/sales")}>
               <ReceiptText size={19} />
               <span>Facturación</span>
             </NavLink>
           )}
 
-          <NavLink to="/customers" className="sidebar-link">
+          <NavLink to="/customers" className="sidebar-link" onClick={(event) => handleNavigation(event, "/customers")}>
             <Users size={19} />
             <span>Clientes</span>
           </NavLink>
 
           {isAdministrator && (
             <>
-              <NavLink to="/products" className="sidebar-link">
+              <NavLink to="/products" className="sidebar-link" onClick={(event) => handleNavigation(event, "/products")}>
                 <Boxes size={19} />
                 <span>Productos</span>
               </NavLink>
             </>
           )}
 
-          <NavLink to="/invoices" className="sidebar-link">
+          <NavLink to="/invoices" className="sidebar-link" onClick={(event) => handleNavigation(event, "/invoices")}>
             <FileClock size={19} />
             <span>Historial</span>
           </NavLink>
 
-          <NavLink to="/reports" className="sidebar-link">
+          <NavLink to="/reports" className="sidebar-link" onClick={(event) => handleNavigation(event, "/reports")}>
             <BarChart3 size={19} />
             <span>Reportes</span>
           </NavLink>
 
           {isAdministrator && (
             <>
-              <NavLink to="/users" className="sidebar-link">
+              <NavLink to="/users" className="sidebar-link" onClick={(event) => handleNavigation(event, "/users")}>
                 <UserCog size={19} />
                 <span>Usuarios</span>
               </NavLink>
 
-              <NavLink to="/roles" className="sidebar-link">
+              <NavLink to="/roles" className="sidebar-link" onClick={(event) => handleNavigation(event, "/roles")}>
                 <ShieldCheck size={19} />
                 <span>Roles</span>
               </NavLink>
 
-              <NavLink to="/error-logs" className="sidebar-link">
+              <NavLink to="/error-logs" className="sidebar-link" onClick={(event) => handleNavigation(event, "/error-logs")}>
                 <TriangleAlert size={19} />
                 <span>Registro de errores</span>
               </NavLink>
 
-              <NavLink to="/audit-logs" className="sidebar-link">
+              <NavLink to="/audit-logs" className="sidebar-link" onClick={(event) => handleNavigation(event, "/audit-logs")}>
                 <ClipboardList size={19} />
                 <span>Auditoría</span>
               </NavLink>

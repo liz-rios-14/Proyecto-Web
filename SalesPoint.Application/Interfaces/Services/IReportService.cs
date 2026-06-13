@@ -5,5 +5,5 @@ namespace SalesPoint.Application.Interfaces.Services;
 public interface IReportService
 {
     Task<SalesReportDto> GetAsync(ReportRequest request);
-    Task<byte[]> ExportCsvAsync(ReportRequest request);
+    Task<byte[]> ExportExcelAsync(ReportRequest request);
 }

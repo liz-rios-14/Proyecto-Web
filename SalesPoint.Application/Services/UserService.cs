@@ -118,6 +118,18 @@ public sealed class UserService : IUserService
         await _userRepository.UpdateAsync(user);
     }
 
+    public async Task ActivateAsync(int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id)
+            ?? throw new DomainException("Usuario no encontrado.");
+
+        if (user.IsActive)
+            throw new DomainException("El usuario ya se encuentra activo.");
+
+        user.Activate();
+        await _userRepository.UpdateAsync(user);
+    }
+
     public async Task UnlockAsync(int id)
     {
         var user = await _userRepository.GetByIdAsync(id)
@@ -172,6 +184,12 @@ public sealed class UserService : IUserService
 
         if (userName.Trim().Length < 3 || userName.Trim().Length > 60)
             throw new DomainException("El usuario debe tener entre 3 y 60 caracteres.");
+
+        if (!Regex.IsMatch(fullName.Trim(), @"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?: [A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$"))
+            throw new DomainException("Los nombres y apellidos solo pueden contener letras y espacios simples.");
+
+        if (!Regex.IsMatch(userName.Trim(), @"^[A-Za-z0-9._-]+$"))
+            throw new DomainException("El usuario no puede contener espacios ni caracteres especiales distintos de punto, guion o guion bajo.");
     }
 
     private static void ValidatePasswordPolicy(string password)

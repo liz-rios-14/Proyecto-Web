@@ -57,4 +57,11 @@ public class UsersController : ControllerBase
         await _service.UnlockAsync(id);
         return Ok(new { message = "Usuario desbloqueado correctamente." });
     }
+
+    [HttpPost("{id}/activate")]
+    public async Task<IActionResult> Activate(int id)
+    {
+        await _service.ActivateAsync(id);
+        return Ok(new { message = "Usuario activado correctamente." });
+    }
 }
