@@ -274,6 +274,41 @@
   min-width: 0;
 }
 
+.external-login {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  text-align: center;
+}
+
+.external-login > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.external-login > span::before,
+.external-login > span::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #dbe3ef;
+}
+
+.google-login-button:empty {
+  display: none;
+}
+
+.google-login-button > div {
+  margin: 0 auto;
+}
+
+.external-login small {
+  color: #475569;
+}
+
 .login-card label {
   margin-top: 4px;
   color: #334155;

@@ -13,15 +13,61 @@ public sealed class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IExternalIdentityValidator _externalIdentityValidator;
 
     public AuthService(
         IUserRepository userRepository,
         IJwtTokenGenerator jwtTokenGenerator,
-        IRefreshTokenRepository refreshTokenRepository)
+        IRefreshTokenRepository refreshTokenRepository,
+        IExternalIdentityValidator externalIdentityValidator)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _refreshTokenRepository = refreshTokenRepository;
+        _externalIdentityValidator = externalIdentityValidator;
+    }
+
+    public ExternalAuthenticationStatusDto GetExternalAuthenticationStatus() =>
+        new()
+        {
+            GoogleEnabled = _externalIdentityValidator.IsConfigured,
+            GoogleClientId = _externalIdentityValidator.IsConfigured
+                ? _externalIdentityValidator.ClientId
+                : string.Empty
+        };
+
+    public async Task<LoginResultDto> LoginWithGoogleAsync(
+        GoogleLoginRequestDto request)
+    {
+        if (!_externalIdentityValidator.IsConfigured)
+            return LoginResultDto.Failure(
+                "El acceso con Google no está configurado.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Credential))
+            return LoginResultDto.Failure(
+                "La credencial de Google es obligatoria.");
+
+        var identity = await _externalIdentityValidator
+            .ValidateGoogleTokenAsync(request.Credential);
+
+        if (identity is null || !identity.EmailVerified ||
+            string.IsNullOrWhiteSpace(identity.Email))
+        {
+            return LoginResultDto.Failure(
+                "Google no pudo verificar la identidad o el correo.");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(identity.Email);
+
+        if (user is null)
+            return LoginResultDto.Failure(
+                "El correo de Google no está registrado en SalesPoint.");
+        if (!user.IsActive || user.IsDeleted)
+            return LoginResultDto.Failure("El usuario se encuentra inactivo.");
+        if (user.IsLocked)
+            return LoginResultDto.Failure(
+                "El usuario se encuentra bloqueado. Contacte al administrador.");
+
+        return LoginResultDto.Success(await CreateSessionAsync(user));
     }
 
     public async Task<LoginResultDto> LoginAsync(LoginRequestDto request)

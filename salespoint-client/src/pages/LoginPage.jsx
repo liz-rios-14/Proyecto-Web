@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login } from "../api/authApi";
+import {
+  getExternalAuthenticationStatus,
+  login,
+  loginWithGoogle,
+} from "../api/authApi";
 import { getApiErrorMessage } from "../api/apiError";
 import { saveAuthSession } from "../services/authStorage";
 import { useAppAlert } from "../components/AppAlert";
@@ -18,6 +22,9 @@ export default function LoginPage() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const googleButtonRef = useRef(null);
 
   useEffect(() => {
     const parameters = new URLSearchParams(window.location.search);
@@ -31,6 +38,77 @@ export default function LoginPage() {
     showAlert(message, "warning");
     window.history.replaceState({}, "", "/login");
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const configureGoogle = async () => {
+      try {
+        const status = await getExternalAuthenticationStatus();
+        if (cancelled || !status.googleEnabled || !status.googleClientId) return;
+        setGoogleEnabled(true);
+
+        const renderButton = () => {
+          if (cancelled || !window.google || !googleButtonRef.current) return;
+
+          window.google.accounts.id.initialize({
+            client_id: status.googleClientId,
+            callback: async ({ credential }) => {
+              if (!credential) return;
+              try {
+                setGoogleLoading(true);
+                const result = await loginWithGoogle(credential);
+                saveAuthSession(result);
+                navigate("/", { replace: true });
+              } catch (requestError) {
+                showAlert(
+                  getApiErrorMessage(
+                    requestError,
+                    "No se pudo iniciar sesión con Google."
+                  ),
+                  "error"
+                );
+              } finally {
+                setGoogleLoading(false);
+              }
+            },
+          });
+
+          googleButtonRef.current.replaceChildren();
+          window.google.accounts.id.renderButton(googleButtonRef.current, {
+            theme: "outline",
+            size: "large",
+            width: googleButtonRef.current.clientWidth || 320,
+            text: "signin_with",
+            shape: "rectangular",
+          });
+        };
+
+        if (window.google) {
+          renderButton();
+          return;
+        }
+
+        let script = document.getElementById("google-identity-script");
+        if (!script) {
+          script = document.createElement("script");
+          script.id = "google-identity-script";
+          script.src = "https://accounts.google.com/gsi/client";
+          script.async = true;
+          script.defer = true;
+          document.head.appendChild(script);
+        }
+        script.addEventListener("load", renderButton, { once: true });
+      } catch {
+        // El acceso tradicional sigue disponible si Google no está configurado.
+      }
+    };
+
+    configureGoogle();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, showAlert]);
 
   const updateField = (field, value) => {
     setForm((current) => ({
@@ -134,6 +212,18 @@ export default function LoginPage() {
           >
             {loading ? "Ingresando..." : "Ingresar"}
           </button>
+
+          {googleEnabled && (
+            <div className="external-login">
+              <span>o ingrese con</span>
+              <div
+                ref={googleButtonRef}
+                className="google-login-button"
+                aria-busy={googleLoading}
+              />
+              {googleLoading && <small>Validando cuenta de Google...</small>}
+            </div>
+          )}
         </form>
 
         <div className="login-links">

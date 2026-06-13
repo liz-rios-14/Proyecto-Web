@@ -27,6 +27,24 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpGet("external/status")]
+    public IActionResult ExternalStatus()
+    {
+        return Ok(_service.GetExternalAuthenticationStatus());
+    }
+
+    [AllowAnonymous]
+    [HttpPost("external/google")]
+    public async Task<IActionResult> GoogleLogin(
+        [FromBody] GoogleLoginRequestDto request)
+    {
+        var result = await _service.LoginWithGoogleAsync(request);
+        return result.IsSuccess
+            ? Ok(result.Data)
+            : BadRequest(new { message = result.Message });
+    }
+
+    [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto request)
     {

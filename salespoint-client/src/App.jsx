@@ -12,6 +12,7 @@ import RoleManagerPage from "./pages/RoleManagerPage";
 import ErrorLogPage from "./pages/ErrorLogPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import ReportsPage from "./pages/ReportsPage";
+import AdditionalFeaturesPage from "./pages/AdditionalFeaturesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { UnsavedChangesProvider } from "./components/UnsavedChangesContext";
 
@@ -113,6 +114,15 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["ADMINISTRATOR", "SELLER"]}>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/additional-features"
+          element={
+            <ProtectedRoute allowedRoles={["ADMINISTRATOR", "SELLER"]}>
+              <AdditionalFeaturesPage />
             </ProtectedRoute>
           }
         />

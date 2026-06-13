@@ -1,0 +1,55 @@
+name: salespoint
+
+services:
+  database:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:?Configure SA_PASSWORD en docker/.env}"
+    ports:
+      - "14330:1433"
+    volumes:
+      - salespoint_sql_data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 25s
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      Deployment__Mode: "Docker Compose"
+      ConnectionStrings__DefaultConnection: "Server=database,1433;Database=salespoint_db;User Id=sa;Password=${SA_PASSWORD:?Configure SA_PASSWORD en docker/.env};TrustServerCertificate=True;Encrypt=False;"
+      Jwt__Key: "${JWT_KEY:?Configure JWT_KEY en docker/.env}"
+      Jwt__Issuer: "SalesPointApi"
+      Jwt__Audience: "SalesPointClient"
+      ExternalAuthentication__Google__ClientId: "${GOOGLE_CLIENT_ID:-}"
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "5037:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        VITE_API_URL: "/api"
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  salespoint_sql_data:

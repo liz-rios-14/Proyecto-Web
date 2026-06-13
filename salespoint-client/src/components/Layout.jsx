@@ -55,6 +55,12 @@ const pageMetadata = {
     description: "Revise incidencias técnicas y detalles útiles para diagnóstico.",
     icon: TriangleAlert,
   },
+  "/additional-features": {
+    eyebrow: "Demostración técnica",
+    title: "Funcionalidades adicionales",
+    description: "Compruebe los bonus implementados y el estado de integración del sistema.",
+    icon: ShieldCheck,
+  },
 };
 
 export default function Layout({ children }) {

@@ -8,6 +8,7 @@ import {
   FileClock,
   Home,
   ReceiptText,
+  Sparkles,
   ShieldCheck,
   ShoppingCart,
   TriangleAlert,
@@ -187,6 +188,11 @@ export default function Sidebar() {
           <NavLink to="/reports" className="sidebar-link" onClick={(event) => handleNavigation(event, "/reports")}>
             <BarChart3 size={19} />
             <span>Reportes</span>
+          </NavLink>
+
+          <NavLink to="/additional-features" className="sidebar-link" onClick={(event) => handleNavigation(event, "/additional-features")}>
+            <Sparkles size={19} />
+            <span>Adicionales</span>
           </NavLink>
 
           {isAdministrator && (

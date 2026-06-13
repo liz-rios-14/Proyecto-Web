@@ -6,6 +6,17 @@ public sealed class LoginRequestDto
     public string Password { get; set; } = string.Empty;
 }
 
+public sealed class GoogleLoginRequestDto
+{
+    public string Credential { get; set; } = string.Empty;
+}
+
+public sealed class ExternalAuthenticationStatusDto
+{
+    public bool GoogleEnabled { get; set; }
+    public string GoogleClientId { get; set; } = string.Empty;
+}
+
 public sealed class LoginResponseDto
 {
     public int UserId { get; set; }

@@ -33,8 +33,12 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IReportRepository, ReportRepository>();
+        services.AddScoped<ISystemStatusRepository, SystemStatusRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddSingleton<IExternalIdentityValidator>(
+            new GoogleIdentityValidator(
+                configuration["ExternalAuthentication:Google:ClientId"]));
 
         return services;
     }

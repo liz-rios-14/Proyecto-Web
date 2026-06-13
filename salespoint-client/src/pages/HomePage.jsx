@@ -6,9 +6,11 @@ import {
   BadgeCheck,
   Boxes,
   ClipboardList,
+  Cloud,
   FileClock,
   FileSpreadsheet,
   KeyRound,
+  LogIn,
   ReceiptText,
   RefreshCw,
   ShieldCheck,
@@ -142,6 +144,18 @@ export default function HomePage() {
       description: "Token temporal, expiración y bloqueo de contraseñas anteriores.",
       icon: KeyRound,
       access: "Acceso público seguro",
+    },
+    {
+      title: "Autenticación externa",
+      description: "Inicio de sesión con Google y validación oficial del token en la API.",
+      icon: LogIn,
+      access: "Cuentas previamente registradas",
+    },
+    {
+      title: "Despliegue completo",
+      description: "Frontend, API y SQL Server desplegables juntos con Docker Compose.",
+      icon: Cloud,
+      access: "Entorno local o servidor cloud",
     },
     {
       title: "Exportación avanzada",
@@ -293,6 +307,9 @@ export default function HomePage() {
               );
             })}
           </div>
+          <Link to="/additional-features" className="dashboard-primary-button bonus-proof-link">
+            Comprobar todos los adicionales
+          </Link>
         </section>
       </section>
     </Layout>
