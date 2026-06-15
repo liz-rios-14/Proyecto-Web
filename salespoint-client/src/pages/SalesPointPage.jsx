@@ -10,6 +10,12 @@ import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { getAuthRole, getAuthUser } from "../services/authStorage";
 import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
+import {
+  normalizeSpaces,
+  sanitizeDigits,
+  sanitizeEmail,
+  sanitizeSingleSpacedText,
+} from "../utils/inputSanitizers";
 
 const formatDateTime = (date) => {
   const pad = (value) => String(value).padStart(2, "0");
@@ -309,19 +315,19 @@ function SalesPointContent() {
     }
 
     if (field === "phone") {
-      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      cleanValue = sanitizeDigits(value, 10);
     }
 
     if (field === "cedula") {
-      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      cleanValue = sanitizeDigits(value, 10);
     }
 
     if (field === "address") {
-      cleanValue = value.toUpperCase().slice(0, 150);
+      cleanValue = sanitizeSingleSpacedText(value, 150);
     }
 
     if (field === "email") {
-      cleanValue = value.toLowerCase().slice(0, 120);
+      cleanValue = sanitizeEmail(value);
     }
 
     setCustomer((currentCustomer) => ({
@@ -344,11 +350,11 @@ function SalesPointContent() {
       return "Cree o cargue un cliente valido antes de facturar.";
     }
 
-    const firstName = customer?.firstName?.trim().replace(/\s+/g, " ") ?? "";
-    const lastName = customer?.lastName?.trim().replace(/\s+/g, " ") ?? "";
+    const firstName = normalizeSpaces(customer?.firstName ?? "");
+    const lastName = normalizeSpaces(customer?.lastName ?? "");
     const cedula = customer?.cedula?.trim() ?? "";
     const phone = customer?.phone?.trim() ?? "";
-    const address = customer?.address?.trim() ?? "";
+    const address = normalizeSpaces(customer?.address ?? "");
     const email = customer?.email?.trim() ?? "";
 
     if (!firstName || !lastName || !phone || !address || !email) {
@@ -906,7 +912,8 @@ function SalesPointContent() {
 
           <input
             value={customer?.firstName || ""}
-            placeholder="Nombre"
+            placeholder="Nombres"
+            readOnly
             onChange={(event) =>
               updateCustomerField("firstName", event.target.value)
             }
@@ -914,7 +921,8 @@ function SalesPointContent() {
 
           <input
             value={customer?.lastName || ""}
-            placeholder="Apellido"
+            placeholder="Apellidos"
+            readOnly
             onChange={(event) =>
               updateCustomerField("lastName", event.target.value)
             }
@@ -931,12 +939,14 @@ function SalesPointContent() {
           <input
             value={customer?.phone || ""}
             placeholder="Teléfono"
+            readOnly
             onChange={(event) => updateCustomerField("phone", event.target.value)}
           />
 
           <input
             value={customer?.address || ""}
             placeholder="Dirección"
+            readOnly
             onChange={(event) =>
               updateCustomerField("address", event.target.value)
             }
@@ -945,6 +955,7 @@ function SalesPointContent() {
           <input
             value={customer?.email || ""}
             placeholder="Correo"
+            readOnly
             onChange={(event) => updateCustomerField("email", event.target.value)}
           />
         </div>

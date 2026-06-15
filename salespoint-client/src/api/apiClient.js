@@ -7,7 +7,7 @@ import {
   saveAuthSession,
 } from "../services/authStorage";
 
-const baseURL = import.meta.env.VITE_API_URL || "https://localhost:7101/api";
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5036/api";
 export const api = axios.create({ baseURL });
 let refreshPromise = null;
 

@@ -3,6 +3,13 @@ import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "./AppAlert";
 import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
+import {
+  normalizeSpaces,
+  sanitizeDigits,
+  sanitizeEmail,
+  sanitizePersonNames,
+  sanitizeSingleSpacedText,
+} from "../utils/inputSanitizers";
 
 const emptyForm = {
   id: "",
@@ -34,32 +41,29 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
     let cleanValue = value;
 
     if (field === "firstName" || field === "lastName") {
-      cleanValue = value
-        .replace(/[^a-zA-ZÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
-        .toUpperCase()
-        .slice(0, 40);
+      cleanValue = sanitizePersonNames(value, 40);
     }
 
     if (field === "id") {
-      cleanValue = value.replace(/\D/g, "").slice(0, 9);
+      cleanValue = sanitizeDigits(value, 9);
       setLoadedCustomer(null);
     }
 
     if (field === "cedula") {
-      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      cleanValue = sanitizeDigits(value, 10);
       setLoadedCustomer(null);
     }
 
     if (field === "phone") {
-      cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      cleanValue = sanitizeDigits(value, 10);
     }
 
     if (field === "address") {
-      cleanValue = value.toUpperCase().slice(0, 150);
+      cleanValue = sanitizeSingleSpacedText(value, 150);
     }
 
     if (field === "email") {
-      cleanValue = value.toLowerCase().slice(0, 120);
+      cleanValue = sanitizeEmail(value);
       setLoadedCustomer(null);
     }
 
@@ -108,11 +112,11 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
 
   const createCustomer = async () => {
     const request = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
+      firstName: normalizeSpaces(form.firstName),
+      lastName: normalizeSpaces(form.lastName),
       cedula: form.cedula.trim(),
       phone: form.phone.trim(),
-      address: form.address.trim(),
+      address: normalizeSpaces(form.address),
       email: form.email.trim(),
     };
 
@@ -128,6 +132,16 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
       return;
     }
 
+    if (!/^[\p{L}]+(?: [\p{L}]+)*$/u.test(request.firstName)) {
+      showAlert("Los nombres solo deben contener letras y un espacio entre palabras.", "warning");
+      return;
+    }
+
+    if (!/^[\p{L}]+(?: [\p{L}]+)*$/u.test(request.lastName)) {
+      showAlert("Los apellidos solo deben contener letras y un espacio entre palabras.", "warning");
+      return;
+    }
+
     if (!isValidEcuadorianCedula(request.cedula)) {
       showAlert("Ingrese una cedula ecuatoriana valida.", "warning");
       return;
@@ -140,6 +154,11 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
 
     if (request.address.length < 5) {
       showAlert("La direccion del cliente debe tener al menos 5 caracteres.", "warning");
+      return;
+    }
+
+    if (!/^[\p{L}0-9 .,#/-]+$/u.test(request.address)) {
+      showAlert("La direccion contiene caracteres no permitidos.", "warning");
       return;
     }
 
@@ -227,7 +246,7 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
           <h3 className="modal-title">Crear cliente para factura</h3>
 
           <button className="close-icon" onClick={onClose}>
-            ×
+            x
           </button>
         </div>
 
@@ -236,18 +255,21 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
             value={form.id}
             placeholder="ID"
             inputMode="numeric"
+            disabled
             onChange={(event) => updateField("id", event.target.value)}
           />
 
           <input
             value={form.firstName}
-            placeholder="Nombre"
+            placeholder="Nombres"
+            disabled={Boolean(loadedCustomer)}
             onChange={(event) => updateField("firstName", event.target.value)}
           />
 
           <input
             value={form.lastName}
-            placeholder="Apellido"
+            placeholder="Apellidos"
+            disabled={Boolean(loadedCustomer)}
             onChange={(event) => updateField("lastName", event.target.value)}
           />
 
@@ -264,18 +286,24 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
             placeholder="Telefono"
             inputMode="numeric"
             maxLength="10"
+            disabled={Boolean(loadedCustomer)}
             onChange={(event) => updateField("phone", event.target.value)}
           />
 
           <input
             value={form.address}
             placeholder="Direccion"
+            disabled={Boolean(loadedCustomer)}
             onChange={(event) => updateField("address", event.target.value)}
           />
 
           <input
             value={form.email}
             placeholder="Correo"
+            disabled={Boolean(loadedCustomer)}
+            onKeyDown={(event) => {
+              if (event.key === " ") event.preventDefault();
+            }}
             onChange={(event) => updateField("email", event.target.value)}
           />
         </div>
@@ -285,7 +313,7 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
             type="button"
             className="secondary-button"
             onClick={loadById}
-            disabled={isLoadingById || isSaving}
+            disabled
           >
             {isLoadingById ? "Cargando..." : "Buscar ID"}
           </button>
@@ -293,7 +321,7 @@ export default function CreateCustomerModal({ isOpen, onClose, onLoad }) {
           <button
             type="button"
             onClick={createCustomer}
-            disabled={isSaving || isLoadingById}
+            disabled={isSaving || isLoadingById || Boolean(loadedCustomer)}
           >
             {isSaving ? "Guardando..." : "Guardar cliente"}
           </button>

@@ -9,7 +9,9 @@ import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 import { getRoleLabel } from "../services/roleLabels";
 import {
   normalizeSpaces,
+  sanitizeEmail,
   sanitizePersonNames,
+  sanitizeSingleSpacedText,
   sanitizeUserName,
 } from "../utils/inputSanitizers";
 
@@ -111,7 +113,7 @@ export default function UserManagerPage() {
     let cleanValue = value;
     if (name === "fullName") cleanValue = sanitizePersonNames(value);
     if (name === "userName") cleanValue = sanitizeUserName(value);
-    if (name === "email") cleanValue = value.trimStart().toLowerCase();
+    if (name === "email") cleanValue = sanitizeEmail(value);
 
     setForm((current) => ({
       ...current,
@@ -304,7 +306,17 @@ export default function UserManagerPage() {
         <div className="form-grid">
           <input name="fullName" maxLength="120" placeholder="Nombres y apellidos" value={form.fullName} onChange={handleChange} />
           <input name="userName" maxLength="60" placeholder="Nombre de usuario" value={form.userName} onChange={handleChange} />
-          <input name="email" type="email" maxLength="120" placeholder="Correo" value={form.email} onChange={handleChange} />
+          <input
+            name="email"
+            type="email"
+            maxLength="120"
+            placeholder="Correo"
+            value={form.email}
+            onKeyDown={(event) => {
+              if (event.key === " ") event.preventDefault();
+            }}
+            onChange={handleChange}
+          />
           <select name="roleId" value={form.roleId} onChange={handleChange}>
             <option value="">Seleccione un rol</option>
             {roles.filter((role) => role.isActive).map((role) => (
@@ -351,7 +363,9 @@ export default function UserManagerPage() {
         <input
           placeholder="Buscar por nombre, usuario, correo o rol"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) =>
+            setSearch(sanitizeSingleSpacedText(event.target.value, 120, { uppercase: false }))
+          }
         />
       </div>
 

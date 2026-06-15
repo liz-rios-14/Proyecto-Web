@@ -105,6 +105,7 @@ export default function AuditLogPage() {
         (response.data.items || []).map((item) => ({
           ...item,
           formattedDate: new Intl.DateTimeFormat("es-EC", {
+            timeZone: "America/Guayaquil",
             dateStyle: "short",
             timeStyle: "medium",
           }).format(new Date(item.createdAt)),

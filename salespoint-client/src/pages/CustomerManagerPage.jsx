@@ -8,7 +8,14 @@ import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 import { isValidEcuadorianCedula } from "../utils/ecuadorianCedula";
-import { sanitizePersonNames } from "../utils/inputSanitizers";
+import {
+  readStoredState,
+  sanitizeDigits,
+  sanitizeEmail,
+  sanitizePersonNames,
+  sanitizeSingleSpacedText,
+  writeStoredState,
+} from "../utils/inputSanitizers";
 import { getAuthRole } from "../services/authStorage";
 
 const emptyCustomerForm = {
@@ -41,6 +48,12 @@ const customerSearchFields = [
   { key: "email", label: "Correo" },
 ];
 
+const searchStateKey = "salespoint-customer-search";
+const initialSearchState = readStoredState(searchStateKey, {
+  field: "firstName",
+  value: "",
+});
+
 export default function CustomerManagerPage() {
   const { showAlert, showConfirm } = useAppAlert();
   const isAdministrator = getAuthRole() === "ADMINISTRATOR";
@@ -48,8 +61,8 @@ export default function CustomerManagerPage() {
   const [form, setForm] = useState(emptyCustomerForm);
   const [formBaseline, setFormBaseline] = useState(emptyCustomerForm);
   const [editingId, setEditingId] = useState(null);
-  const [searchField, setSearchField] = useState("firstName");
-  const [searchValue, setSearchValue] = useState("");
+  const [searchField, setSearchField] = useState(initialSearchState.field);
+  const [searchValue, setSearchValue] = useState(initialSearchState.value);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -70,7 +83,7 @@ export default function CustomerManagerPage() {
 
       if (searchField && searchValue.trim()) {
         params.field = searchField;
-        params.value = searchValue.trim();
+        params.value = searchValue.trim().replace(/\s+/g, " ");
       }
 
       const response = await api.get("/customers/search", { params });
@@ -92,6 +105,13 @@ export default function CustomerManagerPage() {
   }, [page, pageSize]);
 
   useEffect(() => {
+    writeStoredState(searchStateKey, {
+      field: searchField,
+      value: searchValue,
+    });
+  }, [searchField, searchValue]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setPage(1);
       loadCustomers(1);
@@ -104,16 +124,26 @@ export default function CustomerManagerPage() {
     const value = event.target.value;
 
     if (searchField === "id" || searchField === "phone" || searchField === "cedula") {
-      setSearchValue(value.replace(/\D/g, ""));
+      setSearchValue(sanitizeDigits(value, searchField === "id" ? 9 : 10));
       return;
     }
 
     if (searchField === "email") {
-      setSearchValue(value.toLowerCase().slice(0, 120));
+      setSearchValue(sanitizeEmail(value));
       return;
     }
 
-    setSearchValue(value.toUpperCase().slice(0, 150));
+    if (searchField === "firstName" || searchField === "lastName") {
+      setSearchValue(sanitizePersonNames(value, 40));
+      return;
+    }
+
+    if (searchField === "address") {
+      setSearchValue(sanitizeSingleSpacedText(value, 150));
+      return;
+    }
+
+    setSearchValue(sanitizeSingleSpacedText(value, 150));
   };
 
   const handleChange = (event) => {
@@ -128,22 +158,22 @@ export default function CustomerManagerPage() {
     }
 
     if (name === "phone") {
-      setForm({ ...form, phone: value.replace(/\D/g, "").slice(0, 10) });
+      setForm({ ...form, phone: sanitizeDigits(value, 10) });
       return;
     }
 
     if (name === "cedula") {
-      setForm({ ...form, cedula: value.replace(/\D/g, "").slice(0, 10) });
+      setForm({ ...form, cedula: sanitizeDigits(value, 10) });
       return;
     }
 
     if (name === "address") {
-      setForm({ ...form, address: value.toUpperCase().slice(0, 150) });
+      setForm({ ...form, address: sanitizeSingleSpacedText(value, 150) });
       return;
     }
 
     if (name === "email") {
-      setForm({ ...form, email: value.toLowerCase().slice(0, 120) });
+      setForm({ ...form, email: sanitizeEmail(value) });
       return;
     }
 
@@ -432,7 +462,17 @@ export default function CustomerManagerPage() {
           <input name="cedula" placeholder="Cédula ecuatoriana" inputMode="numeric" maxLength="10" value={form.cedula} onChange={handleChange} />
           <input name="phone" placeholder="Telefono" inputMode="numeric" maxLength="10" value={form.phone} onChange={handleChange} />
           <input name="address" placeholder="Direccion" maxLength="150" value={form.address} onChange={handleChange} />
-          <input name="email" type="email" placeholder="Correo" maxLength="120" value={form.email} onChange={handleChange} />
+          <input
+            name="email"
+            type="email"
+            placeholder="Correo"
+            maxLength="120"
+            value={form.email}
+            onKeyDown={(event) => {
+              if (event.key === " ") event.preventDefault();
+            }}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="actions-row">
@@ -454,7 +494,8 @@ export default function CustomerManagerPage() {
             value={searchField}
             onChange={(event) => {
               setSearchField(event.target.value);
-              setSearchValue("");
+              const nextValue = "";
+              setSearchValue(nextValue);
             }}
           >
             {customerSearchFields.map((field) => (
@@ -467,7 +508,7 @@ export default function CustomerManagerPage() {
           <input
             ref={searchInputRef}
             placeholder="Ingrese valor de busqueda"
-            type={searchField === "id" || searchField === "cedula" ? "number" : "text"}
+            type="text"
             value={searchValue}
             onChange={handleSearchValueChange}
           />

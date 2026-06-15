@@ -37,7 +37,7 @@ public sealed class ErrorLogService : IErrorLogService
             request.Message,
             request.Detail,
             request.ExceptionType,
-            _currentUser.UserId,
+            GetCurrentUserIdOrNull(),
             request.HttpMethod,
             request.Path);
         await _repository.CreateAsync(log);
@@ -103,5 +103,17 @@ public sealed class ErrorLogService : IErrorLogService
             Path = log.Path,
             CreatedAt = log.CreatedAt
         };
+    }
+
+    private int? GetCurrentUserIdOrNull()
+    {
+        try
+        {
+            return _currentUser.UserId;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

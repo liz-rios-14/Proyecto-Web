@@ -7,6 +7,13 @@ import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { useUnsavedChanges } from "../components/UnsavedChangesContext";
+import {
+  readStoredState,
+  sanitizeDigits,
+  sanitizeMoney,
+  sanitizeSingleSpacedText,
+  writeStoredState,
+} from "../utils/inputSanitizers";
 
 const emptyProductForm = {
   name: "",
@@ -30,14 +37,20 @@ const productSearchFields = [
   { key: "stock", label: "Stock", type: "number" },
 ];
 
+const searchStateKey = "salespoint-product-search";
+const initialSearchState = readStoredState(searchStateKey, {
+  field: "name",
+  value: "",
+});
+
 export default function ProductManagerPage() {
   const { showAlert, showConfirm } = useAppAlert();
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(emptyProductForm);
   const [formBaseline, setFormBaseline] = useState(emptyProductForm);
   const [editingId, setEditingId] = useState(null);
-  const [searchField, setSearchField] = useState("name");
-  const [searchValue, setSearchValue] = useState("");
+  const [searchField, setSearchField] = useState(initialSearchState.field);
+  const [searchValue, setSearchValue] = useState(initialSearchState.value);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -58,7 +71,7 @@ export default function ProductManagerPage() {
 
       if (searchField && searchValue.trim()) {
         params.field = searchField;
-        params.value = searchValue.trim();
+        params.value = searchValue.trim().replace(/\s+/g, " ");
       }
 
       const response = await api.get("/products/search", { params });
@@ -80,6 +93,13 @@ export default function ProductManagerPage() {
   }, [page, pageSize]);
 
   useEffect(() => {
+    writeStoredState(searchStateKey, {
+      field: searchField,
+      value: searchValue,
+    });
+  }, [searchField, searchValue]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setPage(1);
       loadProducts(1);
@@ -92,23 +112,18 @@ export default function ProductManagerPage() {
     const value = event.target.value;
 
     if (searchField === "id" || searchField === "stock") {
-      setSearchValue(value.replace(/\D/g, ""));
+      setSearchValue(sanitizeDigits(value, searchField === "id" ? 9 : 6));
       return;
     }
 
     if (searchField === "price") {
-      const cleanPrice = value.replace(/[^0-9.]/g, "");
-      if (cleanPrice.split(".").length > 2) return;
+      const cleanPrice = sanitizeMoney(value, 10);
+      if (cleanPrice === null) return;
       setSearchValue(cleanPrice);
       return;
     }
 
-    setSearchValue(
-      value
-        .replace(/[^\p{L}0-9\s]/gu, "")
-        .toUpperCase()
-        .slice(0, 80)
-    );
+    setSearchValue(sanitizeSingleSpacedText(value, 80));
   };
 
   const handleChange = (event) => {
@@ -117,23 +132,20 @@ export default function ProductManagerPage() {
     if (name === "name") {
       setForm({
         ...form,
-        name: value
-          .replace(/[^\p{L}0-9\s]/gu, "")
-          .toUpperCase()
-          .slice(0, 80),
+        name: sanitizeSingleSpacedText(value, 80),
       });
       return;
     }
 
     if (name === "price") {
-      const cleanPrice = value.replace(/[^0-9.]/g, "");
-      if (!/^\d{0,6}(\.\d{0,2})?$/.test(cleanPrice)) return;
+      const cleanPrice = sanitizeMoney(value, 10);
+      if (cleanPrice === null) return;
       setForm({ ...form, price: cleanPrice.slice(0, 10) });
       return;
     }
 
     if (name === "stock") {
-      setForm({ ...form, stock: value.replace(/\D/g, "").slice(0, 6) });
+      setForm({ ...form, stock: sanitizeDigits(value, 6) });
       return;
     }
 
@@ -421,7 +433,7 @@ export default function ProductManagerPage() {
           <input
             ref={searchInputRef}
             placeholder="Ingrese valor de busqueda"
-            type={searchField === "id" || searchField === "stock" || searchField === "price" ? "number" : "text"}
+            type="text"
             value={searchValue}
             onChange={handleSearchValueChange}
           />

@@ -6,6 +6,10 @@ import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { reportFrontendError } from "../api/errorReporter";
+import {
+  sanitizeDigits,
+  sanitizeSingleSpacedText,
+} from "../utils/inputSanitizers";
 
 const searchFields = [
   { key: "", label: "Todos los campos" },
@@ -36,6 +40,7 @@ const formatDate = (value) => {
   }
 
   return new Intl.DateTimeFormat("es-EC", {
+    timeZone: "America/Guayaquil",
     dateStyle: "medium",
     timeStyle: "medium",
   }).format(date);
@@ -45,6 +50,7 @@ export default function ErrorLogPage() {
   const { showAlert } = useAppAlert();
 
   const [logs, setLogs] = useState([]);
+  const [users, setUsers] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
   const [searchField, setSearchField] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -54,6 +60,29 @@ export default function ErrorLogPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    api.get("/users")
+      .then((response) => setUsers(response.data ?? []))
+      .catch(() => setUsers([]));
+  }, []);
+
+  const getUserLabel = (userId, availableUsers = users) => {
+    if (!userId) return "Sistema";
+
+    const user = availableUsers.find((item) => Number(item.id) === Number(userId));
+    return user ? `${user.fullName} (${user.userName})` : `Usuario ${userId}`;
+  };
+
+  const cleanSearchValue = (field, value) => {
+    const cleanField = field?.trim().toLowerCase() ?? "";
+
+    if (cleanField === "id" || cleanField === "userid") {
+      return sanitizeDigits(value, 9);
+    }
+
+    return sanitizeSingleSpacedText(value, 180, { uppercase: false });
+  };
+
   const buildParams = (currentPage, field, value) => {
     const params = {
       pageNumber: currentPage,
@@ -61,7 +90,7 @@ export default function ErrorLogPage() {
     };
 
     const cleanField = field?.trim();
-    const cleanValue = value?.trim();
+    const cleanValue = cleanSearchValue(cleanField, value ?? "").trim();
 
     if (cleanField && cleanValue) {
       params.field = cleanField;
@@ -82,6 +111,17 @@ export default function ErrorLogPage() {
       const response = await api.get("/error-logs", {
         params: buildParams(currentPage, field, value),
       });
+      let currentUsers = users;
+
+      if (currentUsers.length === 0) {
+        try {
+          const usersResponse = await api.get("/users");
+          currentUsers = usersResponse.data ?? [];
+          setUsers(currentUsers);
+        } catch {
+          currentUsers = [];
+        }
+      }
 
       const items = response.data?.items ?? [];
 
@@ -93,7 +133,7 @@ export default function ErrorLogPage() {
             [log.httpMethod, log.path].filter(Boolean).join(" ") ||
             log.source ||
             "No registrado",
-          userLabel: log.userId ? `Usuario ${log.userId}` : "Sistema",
+          userLabel: getUserLabel(log.userId, currentUsers),
         }))
       );
 
@@ -122,7 +162,7 @@ export default function ErrorLogPage() {
 
   const search = () => {
     const cleanField = searchField.trim();
-    const cleanValue = searchValue.trim();
+    const cleanValue = cleanSearchValue(cleanField, searchValue).trim();
 
     if (cleanField && !cleanValue) {
       showAlert("Ingrese un valor para realizar la búsqueda.", "warning");
@@ -199,7 +239,9 @@ export default function ErrorLogPage() {
           <input
             value={searchValue}
             placeholder="Ingrese el valor de búsqueda"
-            onChange={(event) => setSearchValue(event.target.value)}
+            onChange={(event) =>
+              setSearchValue(cleanSearchValue(searchField, event.target.value))
+            }
             onKeyDown={(event) => {
               if (event.key === "Enter") search();
             }}

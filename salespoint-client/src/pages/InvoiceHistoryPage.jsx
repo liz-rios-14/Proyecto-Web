@@ -9,6 +9,13 @@ import { getAuditInvoiceHistory, getInvoices, reconstructInvoiceByNumber } from 
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { getAuthRole } from "../services/authStorage";
+import {
+  readStoredState,
+  sanitizeMoney,
+  sanitizePersonNames,
+  sanitizeSingleSpacedText,
+  writeStoredState,
+} from "../utils/inputSanitizers";
 
 const invoiceColumns = [
   { key: "invoiceNumber", label: "Factura" },
@@ -32,15 +39,28 @@ const searchFields = [
   { key: "total", label: "Total" },
 ];
 
+const searchStateKey = "salespoint-invoice-history-search";
+const initialSearchState = readStoredState(searchStateKey, {
+  field: "invoiceNumber",
+  value: "",
+  auditInvoiceNumber: "",
+});
+
 const formatDateTime = (date) => {
   const currentDate = new Date(date);
-  const pad = (value) => String(value).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Guayaquil",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(currentDate);
+  const getPart = (type) => parts.find((part) => part.type === type)?.value ?? "00";
 
-  return `${currentDate.getFullYear()}-${pad(
-    currentDate.getMonth() + 1
-  )}-${pad(currentDate.getDate())} ${pad(
-    currentDate.getHours()
-  )}:${pad(currentDate.getMinutes())}:${pad(currentDate.getSeconds())}`;
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")} ${getPart("hour")}:${getPart("minute")}:${getPart("second")}`;
 };
 
 const splitCustomerName = (fullName = "") => {
@@ -91,9 +111,11 @@ export default function InvoiceHistoryPage() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [searchField, setSearchField] = useState("invoiceNumber");
-  const [searchValue, setSearchValue] = useState("");
-  const [auditInvoiceNumber, setAuditInvoiceNumber] = useState("");
+  const [searchField, setSearchField] = useState(initialSearchState.field);
+  const [searchValue, setSearchValue] = useState(initialSearchState.value);
+  const [auditInvoiceNumber, setAuditInvoiceNumber] = useState(
+    initialSearchState.auditInvoiceNumber
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -148,7 +170,8 @@ export default function InvoiceHistoryPage() {
         (data.items ?? []).map((item) => ({
           ...item,
           formattedGeneratedAt: formatDateTime(item.generatedAt),
-          generatedByLabel: `Usuario ${item.generatedByUserId}`,
+          generatedByLabel:
+            item.generatedByUserName || `Usuario ${item.generatedByUserId}`,
         }))
       );
       setAuditHistoryTotalPages(Math.max(data.totalPages ?? 1, 1));
@@ -297,7 +320,10 @@ export default function InvoiceHistoryPage() {
   };
 
   const reconstructByNumber = async (invoiceNumber) => {
-    const cleanNumber = invoiceNumber?.trim().toUpperCase();
+    const cleanNumber = sanitizeSingleSpacedText(invoiceNumber ?? "", 30)
+      .replace(/\s/g, "")
+      .trim()
+      .toUpperCase();
 
     if (!cleanNumber) {
       showAlert("Ingrese el número de factura para auditoría.", "warning");
@@ -328,6 +354,26 @@ export default function InvoiceHistoryPage() {
 
   const reconstructInvoice = async () => {
     await reconstructByNumber(auditInvoiceNumber);
+  };
+
+  const handleSearchValueChange = (value) => {
+    if (searchField === "customerName") {
+      setSearchValue(sanitizePersonNames(value, 100));
+      return;
+    }
+
+    if (searchField === "formattedDate") {
+      setSearchValue(value.replace(/[^0-9/: -]/g, "").replace(/^\s+/, "").slice(0, 19));
+      return;
+    }
+
+    if (searchField === "total") {
+      const cleanMoney = sanitizeMoney(value, 10);
+      if (cleanMoney !== null) setSearchValue(cleanMoney);
+      return;
+    }
+
+    setSearchValue(sanitizeSingleSpacedText(value, 30));
   };
 
   const closePreview = () => {
@@ -362,6 +408,14 @@ export default function InvoiceHistoryPage() {
   useEffect(() => {
     loadInvoices(page);
   }, [page, pageSize]);
+
+  useEffect(() => {
+    writeStoredState(searchStateKey, {
+      field: searchField,
+      value: searchValue,
+      auditInvoiceNumber,
+    });
+  }, [searchField, searchValue, auditInvoiceNumber]);
 
   useEffect(() => {
     if (!isAdministrator) return;
@@ -441,7 +495,9 @@ export default function InvoiceHistoryPage() {
             placeholder="Ejemplo: FAC-0000000001"
             value={auditInvoiceNumber}
             onChange={(event) =>
-              setAuditInvoiceNumber(event.target.value.toUpperCase())
+              setAuditInvoiceNumber(
+                sanitizeSingleSpacedText(event.target.value, 30).replace(/\s/g, "")
+              )
             }
           />
 
@@ -477,7 +533,7 @@ export default function InvoiceHistoryPage() {
             ref={searchInputRef}
             placeholder="Ingrese valor de búsqueda"
             value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
+            onChange={(event) => handleSearchValueChange(event.target.value)}
           />
 
           <button type="button" onClick={handleReload}>

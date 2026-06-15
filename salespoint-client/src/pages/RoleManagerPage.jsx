@@ -6,6 +6,7 @@ import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { useUnsavedChanges } from "../components/UnsavedChangesContext";
 import { getRoleLabel } from "../services/roleLabels";
+import { normalizeSpaces, sanitizeSingleSpacedText } from "../utils/inputSanitizers";
 
 const emptyForm = {
   name: "",
@@ -64,7 +65,7 @@ export default function RoleManagerPage() {
 
   const saveRole = async () => {
     const name = form.name.trim().toUpperCase();
-    const description = form.description.trim();
+    const description = normalizeSpaces(form.description);
 
     if (name.length < 2 || name.length > 50) {
       showAlert("El nombre del rol debe tener entre 2 y 50 caracteres.", "warning");
@@ -152,7 +153,14 @@ export default function RoleManagerPage() {
             placeholder="Descripción"
             maxLength="200"
             value={form.description}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                description: sanitizeSingleSpacedText(event.target.value, 200, {
+                  uppercase: false,
+                }),
+              })
+            }
           />
 
           {editingId && (

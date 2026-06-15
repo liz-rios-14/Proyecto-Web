@@ -362,18 +362,30 @@ public sealed class InvoiceService : IInvoiceService
         var data = await _invoiceRepository.GetAuditHistoryAsync(pageNumber, pageSize);
         var totalItems = await _invoiceRepository.CountAuditHistoryAsync();
 
-        return new PagedResponse<AuditInvoiceHistoryDto>
+        var items = new List<AuditInvoiceHistoryDto>();
+
+        foreach (var history in data)
         {
-            Items = data.Select(history => new AuditInvoiceHistoryDto
+            var user = await _userRepository.GetByIdAsync(history.GeneratedByUserId);
+
+            items.Add(new AuditInvoiceHistoryDto
             {
                 Id = history.Id,
                 OriginalInvoiceNumber = history.OriginalInvoiceNumber,
                 GeneratedInvoiceId = history.GeneratedInvoiceId,
                 GeneratedInvoiceNumber = history.GeneratedInvoiceNumber,
                 GeneratedByUserId = history.GeneratedByUserId,
+                GeneratedByUserName = user is null
+                    ? $"Usuario {history.GeneratedByUserId}"
+                    : $"{user.FullName} ({user.UserName})",
                 GeneratedAt = history.GeneratedAt,
                 Total = history.Total
-            }).ToList(),
+            });
+        }
+
+        return new PagedResponse<AuditInvoiceHistoryDto>
+        {
+            Items = items,
             PageNumber = pageNumber,
             PageSize = pageSize,
             TotalItems = totalItems,

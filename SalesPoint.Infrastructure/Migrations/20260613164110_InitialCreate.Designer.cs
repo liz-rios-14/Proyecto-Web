@@ -12,8 +12,8 @@ using SalesPoint.Infrastructure.Persistence;
 namespace SalesPoint.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260610032107_AddRefreshTokensAndAuditLogs")]
-    partial class AddRefreshTokensAndAuditLogs
+    [Migration("20260613164110_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

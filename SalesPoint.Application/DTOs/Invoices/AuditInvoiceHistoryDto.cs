@@ -7,6 +7,7 @@ public sealed class AuditInvoiceHistoryDto
     public int GeneratedInvoiceId { get; set; }
     public string GeneratedInvoiceNumber { get; set; } = string.Empty;
     public int GeneratedByUserId { get; set; }
+    public string GeneratedByUserName { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
     public decimal Total { get; set; }
 }

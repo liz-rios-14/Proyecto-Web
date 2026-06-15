@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import Pagination from "./Pagination";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "./AppAlert";
+import {
+  sanitizeDigits,
+  sanitizeEmail,
+  sanitizeMoney,
+  sanitizePersonNames,
+  sanitizeSingleSpacedText,
+} from "../utils/inputSanitizers";
 
 const isNumericColumn = (key) => {
   const normalizedKey = key.toLowerCase();
@@ -78,11 +85,48 @@ export default function SearchModal({
     availableFields.find((field) => field.key === selectedField) ||
     availableFields[0];
 
+  const sanitizeSearchValue = (field, value) => {
+    const key = field?.key?.toLowerCase() ?? "";
+
+    if (key.includes("price") || key.includes("precio") || key.includes("total")) {
+      const cleanMoney = sanitizeMoney(value, 10);
+      return cleanMoney === null ? searchValue : cleanMoney;
+    }
+
+    if (field?.type === "number" || key.includes("id") || key.includes("cedula")) {
+      return sanitizeDigits(value, key.includes("phone") || key.includes("telefono") ? 10 : 12);
+    }
+
+    if (key.includes("phone") || key.includes("telefono")) {
+      return sanitizeDigits(value, 10);
+    }
+
+    if (key.includes("email") || key.includes("correo")) {
+      return sanitizeEmail(value);
+    }
+
+    if (
+      key.includes("firstname") ||
+      key.includes("lastname") ||
+      key.includes("nombre") ||
+      key.includes("apellido")
+    ) {
+      return sanitizePersonNames(value, 80);
+    }
+
+    return sanitizeSingleSpacedText(value, 150);
+  };
+
   const loadData = async (field, value, currentPage, currentPageSize = pageSize) => {
     try {
       setIsLoading(true);
 
-      const result = await fetchData(field, value.trim(), currentPage, currentPageSize);
+      const result = await fetchData(
+        field,
+        value.trim().replace(/\s+/g, " "),
+        currentPage,
+        currentPageSize
+      );
 
       const items = Array.isArray(result) ? result : result.items ?? [];
 
@@ -226,10 +270,12 @@ export default function SearchModal({
           <input
             ref={inputRef}
             placeholder={`Ingrese ${currentField?.label?.toLowerCase() || "valor"}`}
-            type={currentField?.type === "number" ? "number" : "text"}
+            type="text"
             min={currentField?.type === "number" ? "1" : undefined}
             value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
+            onChange={(event) =>
+              setSearchValue(sanitizeSearchValue(currentField, event.target.value))
+            }
           />
 
           <button onClick={() => loadData(selectedField, searchValue, 1)}>

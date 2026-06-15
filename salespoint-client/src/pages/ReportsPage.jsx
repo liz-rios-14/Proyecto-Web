@@ -5,6 +5,7 @@ import { api } from "../api/apiClient";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import { getAuthRole } from "../services/authStorage";
+import { readStoredState, writeStoredState } from "../utils/inputSanitizers";
 
 const formatInputDate = (date) => {
   const offset = date.getTimezoneOffset();
@@ -13,6 +14,11 @@ const formatInputDate = (date) => {
 
 const today = formatInputDate(new Date());
 const monthStart = `${today.slice(0, 8)}01`;
+const reportStateKey = "salespoint-report-search";
+const initialReportState = readStoredState(reportStateKey, {
+  startDate: monthStart,
+  endDate: today,
+});
 const moneyColumns = [
   { key: "dateLabel", label: "Fecha" },
   { key: "invoiceCount", label: "Facturas", type: "number" },
@@ -24,8 +30,8 @@ const moneyColumns = [
 export default function ReportsPage() {
   const { showAlert } = useAppAlert();
   const isAdministrator = getAuthRole() === "ADMINISTRATOR";
-  const [startDate, setStartDate] = useState(monthStart);
-  const [endDate, setEndDate] = useState(today);
+  const [startDate, setStartDate] = useState(initialReportState.startDate);
+  const [endDate, setEndDate] = useState(initialReportState.endDate);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -54,6 +60,7 @@ export default function ReportsPage() {
     if (!validate()) return;
     try {
       setLoading(true);
+      writeStoredState(reportStateKey, { startDate, endDate });
       const response = await api.get("/reports", {
         params: { startDate, endDate },
       });

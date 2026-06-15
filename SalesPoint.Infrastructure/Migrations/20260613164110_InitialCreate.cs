@@ -8,11 +8,59 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SalesPoint.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSqlServer : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "audit_invoice_histories",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    original_invoice_number = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    generated_invoice_id = table.Column<int>(type: "int", nullable: false),
+                    generated_invoice_number = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    generated_by_user_id = table.Column<int>(type: "int", nullable: false),
+                    total = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    generated_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    is_active = table.Column<bool>(type: "bit", nullable: false),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_audit_invoice_histories", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "audit_logs",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<int>(type: "int", nullable: true),
+                    user_name = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
+                    action = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
+                    entity_name = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
+                    entity_id = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: true),
+                    old_values = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    new_values = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ip_address = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    path = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
+                    http_method = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    is_active = table.Column<bool>(type: "bit", nullable: false),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_audit_logs", x => x.id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "customers",
                 columns: table => new
@@ -21,6 +69,7 @@ namespace SalesPoint.Infrastructure.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     first_name = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
                     last_name = table.Column<string>(type: "nvarchar(80)", maxLength: 80, nullable: false),
+                    cedula = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
                     phone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     address = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     email = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
@@ -42,8 +91,12 @@ namespace SalesPoint.Infrastructure.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     source = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     message = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    Detail = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    detail = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     stack_trace = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    exception_type = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    user_id = table.Column<int>(type: "int", nullable: true),
+                    http_method = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    path = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false),
@@ -65,6 +118,7 @@ namespace SalesPoint.Infrastructure.Migrations
                     invoice_number = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     customer_name_snapshot = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    customer_cedula_snapshot = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
                     customer_email_snapshot = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     customer_phone_snapshot = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     customer_address_snapshot = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
@@ -171,6 +225,8 @@ namespace SalesPoint.Infrastructure.Migrations
                     email = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     password_hash = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
                     is_active = table.Column<bool>(type: "bit", nullable: false),
+                    failed_login_attempts = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    is_locked = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     password_reset_token_hash = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true),
                     password_reset_token_expires_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     is_deleted = table.Column<bool>(type: "bit", nullable: false),
@@ -210,6 +266,33 @@ namespace SalesPoint.Infrastructure.Migrations
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "refresh_tokens",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    token_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    expires_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    revoked_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    replaced_by_token_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    is_active = table.Column<bool>(type: "bit", nullable: false),
+                    is_deleted = table.Column<bool>(type: "bit", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_refresh_tokens", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_refresh_tokens_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -337,6 +420,34 @@ namespace SalesPoint.Infrastructure.Migrations
                 values: new object[] { 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "admin@salespoint.local", "ADMINISTRADOR DEL SISTEMA", true, false, "CHANGE_ME_HASH_ADMIN_123456", null, null, 1, null, "admin" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_audit_invoice_histories_generated_invoice_number",
+                table: "audit_invoice_histories",
+                column: "generated_invoice_number",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_audit_invoice_histories_original_invoice_number",
+                table: "audit_invoice_histories",
+                column: "original_invoice_number");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_audit_logs_created_at",
+                table: "audit_logs",
+                column: "created_at");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_audit_logs_user_name_action_entity_name",
+                table: "audit_logs",
+                columns: new[] { "user_name", "action", "entity_name" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_customers_cedula",
+                table: "customers",
+                column: "cedula",
+                unique: true,
+                filter: "[cedula] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_error_logs_created_at",
                 table: "error_logs",
                 column: "created_at");
@@ -362,6 +473,17 @@ namespace SalesPoint.Infrastructure.Migrations
                 table: "payment_methods",
                 column: "name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_refresh_tokens_token_hash",
+                table: "refresh_tokens",
+                column: "token_hash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_refresh_tokens_user_id_expires_at",
+                table: "refresh_tokens",
+                columns: new[] { "user_id", "expires_at" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_roles_name",
@@ -437,6 +559,12 @@ namespace SalesPoint.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "audit_invoice_histories");
+
+            migrationBuilder.DropTable(
+                name: "audit_logs");
+
+            migrationBuilder.DropTable(
                 name: "error_logs");
 
             migrationBuilder.DropTable(
@@ -444,6 +572,9 @@ namespace SalesPoint.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "password_histories");
+
+            migrationBuilder.DropTable(
+                name: "refresh_tokens");
 
             migrationBuilder.DropTable(
                 name: "sale_details");

@@ -1,6 +1,6 @@
 import { getAuthToken, getAuthUser } from "../services/authStorage";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://localhost:7101/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5036/api";
 const MAX_DETAIL_LENGTH = 4000;
 
 let lastReportKey = "";
