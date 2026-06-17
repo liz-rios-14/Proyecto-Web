@@ -4,6 +4,7 @@ import { forgotPassword } from "../api/authApi";
 import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import AuthLayout from "../components/AuthLayout";
+import { sanitizeEmail } from "../utils/inputSanitizers";
 
 export default function ForgotPasswordPage() {
   const { showAlert } = useAppAlert();
@@ -61,7 +62,10 @@ export default function ForgotPasswordPage() {
             type="email"
             placeholder="admin@salespoint.local"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === " ") event.preventDefault();
+            }}
+            onChange={(event) => setEmail(sanitizeEmail(event.target.value))}
           />
 
           {error && <div className="form-alert">{error}</div>}

@@ -5,6 +5,7 @@ import { getApiErrorMessage } from "../api/apiError";
 import { useAppAlert } from "../components/AppAlert";
 import AuthLayout from "../components/AuthLayout";
 import PasswordInput from "../components/PasswordInput";
+import { sanitizeEmail } from "../utils/inputSanitizers";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -22,9 +23,11 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   const updateField = (field, value) => {
+    const cleanValue = field === "email" ? sanitizeEmail(value) : value;
+
     setForm((current) => ({
       ...current,
-      [field]: value,
+      [field]: cleanValue,
     }));
   };
 
@@ -152,6 +155,9 @@ export default function ResetPasswordPage() {
             type="email"
             placeholder="admin@salespoint.local"
             value={form.email}
+            onKeyDown={(event) => {
+              if (event.key === " ") event.preventDefault();
+            }}
             onChange={(event) => updateField("email", event.target.value)}
           />
 

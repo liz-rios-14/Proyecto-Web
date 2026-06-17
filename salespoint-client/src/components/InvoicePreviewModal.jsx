@@ -16,6 +16,7 @@ export default function InvoicePreviewModal({
   onBack,
   onCloseAndClean,
   onCreateNewSale,
+  onVerifyEvenSale,
 }) {
   const { showAlert } = useAppAlert();
 
@@ -519,6 +520,16 @@ export default function InvoicePreviewModal({
               onClick={onCreateNewSale}
             >
               🧾 Reconstruir Factura
+            </button>
+          )}
+
+          {isFinalized && onVerifyEvenSale && (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={onVerifyEvenSale}
+            >
+              Verificar pares
             </button>
           )}
 

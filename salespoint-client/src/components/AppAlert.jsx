@@ -7,16 +7,21 @@ export function AppAlertProvider({ children }) {
   const [confirmation, setConfirmation] = useState(null);
   const alertTimerRef = useRef(null);
 
-  const showAlert = (message, type = "warning") => {
+  const showAlert = (message, type = "warning", options = {}) => {
     if (alertTimerRef.current) {
       clearTimeout(alertTimerRef.current);
     }
 
-    setAlertData({ message, type });
+    setAlertData({
+      message,
+      type,
+      title: options.title,
+      lines: options.lines,
+    });
 
     alertTimerRef.current = setTimeout(() => {
       setAlertData(null);
-    }, 3500);
+    }, options.duration ?? 3500);
   };
 
   const showConfirm = (message, options = {}) =>
@@ -52,11 +57,12 @@ export function AppAlertProvider({ children }) {
   }, []);
 
   const alertTitle =
-    alertData?.type === "success"
+    alertData?.title ||
+    (alertData?.type === "success"
       ? "Correcto"
       : alertData?.type === "error"
         ? "Error"
-        : "Aviso";
+        : "Aviso");
 
   const alertIcon =
     alertData?.type === "success"
@@ -77,9 +83,21 @@ export function AppAlertProvider({ children }) {
         >
           <div className="app-alert-icon">{alertIcon}</div>
 
-          <div>
+          <div className="app-alert-content">
             <strong>{alertTitle}</strong>
-            <p>{alertData.message}</p>
+            {alertData.lines ? (
+              <div className="app-alert-lines">
+                {alertData.lines.map((line, index) => (
+                  line === "" ? (
+                    <div className="app-alert-spacer" key={`spacer-${index}`} />
+                  ) : (
+                    <p key={`${line}-${index}`}>{line}</p>
+                  )
+                ))}
+              </div>
+            ) : (
+              <p>{alertData.message}</p>
+            )}
           </div>
 
           <button

@@ -102,6 +102,17 @@ const getNumber = (...values) => {
   return Number.isFinite(number) ? number : 0;
 };
 
+const showInvoiceError = (error, fallbackMessage, showAlert) => {
+  const message = getApiErrorMessage(error, fallbackMessage);
+  const isStockWarning = message.includes("Stock actual de todos los productos:");
+
+  showAlert(message, "error", {
+    title: isStockWarning ? "Stock insuficiente" : undefined,
+    duration: isStockWarning ? 12000 : undefined,
+    lines: isStockWarning ? message.split("\n") : undefined,
+  });
+};
+
 export default function InvoiceHistoryPage() {
   const navigate = useNavigate();
   const { showAlert } = useAppAlert();
@@ -319,7 +330,10 @@ export default function InvoiceHistoryPage() {
     };
   };
 
-  const reconstructByNumber = async (invoiceNumber) => {
+  const reconstructByNumber = async (
+    invoiceNumber,
+    { validateForSale = false, validateEvenRules = false } = {}
+  ) => {
     const cleanNumber = sanitizeSingleSpacedText(invoiceNumber ?? "", 30)
       .replace(/\s/g, "")
       .trim()
@@ -334,26 +348,31 @@ export default function InvoiceHistoryPage() {
     try {
       setAuditInvoiceNumber(cleanNumber);
 
-      const data = await reconstructInvoiceByNumber(cleanNumber);
-      const mappedInvoice = mapReconstructedInvoice(data);
+      const data = await reconstructInvoiceByNumber(cleanNumber, {
+        validateForSale,
+        validateEvenRules,
+      });
+      const mappedInvoice = {
+        ...mapReconstructedInvoice(data),
+        canCreateSale: validateForSale || validateEvenRules,
+      };
 
       setSelectedInvoice(mappedInvoice);
       setShowPreview(true);
       showAlert(
-        `Factura ${mappedInvoice.invoiceNumber} reconstruida correctamente.`,
+        validateForSale
+          ? `Factura ${mappedInvoice.invoiceNumber} validada para reconstrucción.`
+          : `Factura ${mappedInvoice.invoiceNumber} cargada correctamente.`,
         "success"
       );
     } catch (error) {
       console.error("Error reconstruyendo factura:", error);
-      showAlert(
-        getApiErrorMessage(error, "No se pudo reconstruir la factura."),
-        "error"
-      );
+      showInvoiceError(error, "No se pudo reconstruir la factura.", showAlert);
     }
   };
 
   const reconstructInvoice = async () => {
-    await reconstructByNumber(auditInvoiceNumber);
+    await reconstructByNumber(auditInvoiceNumber, { validateForSale: true });
   };
 
   const handleSearchValueChange = (value) => {
@@ -395,14 +414,64 @@ export default function InvoiceHistoryPage() {
     reconstructByNumber(invoice.invoiceNumber);
   };
 
-  const createNewSaleFromAudit = () => {
+  const verifyEvenSaleFromPreview = async () => {
     if (!selectedInvoice) return;
 
-    navigate("/sales", {
-      state: {
-        reconstructedInvoice: selectedInvoice,
-      },
-    });
+    try {
+      const data = await reconstructInvoiceByNumber(selectedInvoice.invoiceNumber, {
+        validateEvenRules: true,
+      });
+      const mappedInvoice = {
+        ...mapReconstructedInvoice(data),
+        canCreateSale: true,
+      };
+
+      setSelectedInvoice(mappedInvoice);
+
+      navigate("/sales", {
+        state: {
+          reconstructedInvoice: mappedInvoice,
+        },
+      });
+    } catch (error) {
+      console.error("Error validando pares:", error);
+      showInvoiceError(error, "No se pudo verificar la factura.", showAlert);
+    }
+  };
+
+  const createNewSaleFromAudit = async () => {
+    if (!selectedInvoice) return;
+
+    if (selectedInvoice.canCreateSale) {
+      navigate("/sales", {
+        state: {
+          reconstructedInvoice: selectedInvoice,
+        },
+      });
+      return;
+    }
+
+    try {
+      const data = await reconstructInvoiceByNumber(selectedInvoice.invoiceNumber, {
+        validateForSale: true,
+      });
+      const mappedInvoice = {
+        ...mapReconstructedInvoice(data),
+        canCreateSale: true,
+      };
+
+      setSelectedInvoice(mappedInvoice);
+
+      navigate("/sales", {
+        state: {
+          reconstructedInvoice: mappedInvoice,
+        },
+      });
+    } catch (error) {
+      console.error("Error validando reconstrucción:", error);
+      showInvoiceError(error, "No se pudo reconstruir la factura.", showAlert);
+    }
+
   };
 
   useEffect(() => {
@@ -649,6 +718,7 @@ export default function InvoiceHistoryPage() {
           onBack={() => setShowPreview(false)}
           onCloseAndClean={closePreview}
           onCreateNewSale={createNewSaleFromAudit}
+          onVerifyEvenSale={verifyEvenSaleFromPreview}
         />
       )}
     </Layout>

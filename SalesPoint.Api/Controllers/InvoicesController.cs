@@ -38,9 +38,15 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpGet("audit/{invoiceNumber}")]
-    public async Task<IActionResult> ReconstructByInvoiceNumber(string invoiceNumber)
+    public async Task<IActionResult> ReconstructByInvoiceNumber(
+        string invoiceNumber,
+        [FromQuery] bool validateForSale = false,
+        [FromQuery] bool validateEvenRules = false)
     {
-        var result = await _invoiceService.ReconstructByInvoiceNumberAsync(invoiceNumber);
+        var result = await _invoiceService.ReconstructByInvoiceNumberAsync(
+            invoiceNumber,
+            validateForSale,
+            validateEvenRules);
 
         if (result is null)
         {

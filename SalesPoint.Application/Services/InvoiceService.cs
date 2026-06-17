@@ -271,7 +271,9 @@ public sealed class InvoiceService : IInvoiceService
     }
 
     public async Task<ReconstructedInvoiceDto?> ReconstructByInvoiceNumberAsync(
-        string invoiceNumber)
+        string invoiceNumber,
+        bool validateForSale = false,
+        bool validateEvenRules = false)
     {
         if (string.IsNullOrWhiteSpace(invoiceNumber))
             throw new DomainException("El número de factura es obligatorio.");
@@ -283,6 +285,67 @@ public sealed class InvoiceService : IInvoiceService
 
         if (invoice is null)
             return null;
+
+        var soldItemTypesCount = invoice.Details.Count;
+        var totalCents = (long)Math.Round(invoice.Total * 100, MidpointRounding.AwayFromZero);
+        var lastTotalCentDigit = Math.Abs(totalCents % 10);
+        /*var totalDollars = (long)Math.Truncate(invoice.Total);
+        var lastTotalDollarDigit = Math.Abs(totalDollars % 10);*/
+
+
+        if (validateEvenRules && soldItemTypesCount % 2 != 0)
+            throw new DomainException(
+                "No se puede duplicar la factura porque el número de tipos de ítems vendidos debe ser par. No se duplicó la venta.");
+
+        if (validateEvenRules && lastTotalCentDigit % 2 != 0)
+            throw new DomainException(
+                "No se puede duplicar la factura porque el último dígito del total a pagar en centavos debe ser par. No se duplicó la venta.");
+
+        /*if (validateEvenRules && lastTotalDollarDigit % 2 != 0)
+            throw new DomainException(
+                "No se puede duplicar la factura porque el último dígito del total a pagar en dólares debe ser par. No se duplicó la venta.");*/
+
+        var stockByProductId = new Dictionary<int, int>();
+        var unavailableProducts = new List<string>();
+        var stockSummary = new List<string>();
+
+        foreach (var detail in invoice.Details)
+        {
+            var product = await _productRepository.GetByIdAsync(detail.ProductId);
+
+            if (product is null || !product.IsActive || product.IsDeleted)
+            {
+                stockSummary.Add($"{detail.ProductName}: producto no disponible");
+                if (validateForSale)
+                    unavailableProducts.Add($"{detail.ProductName}: producto no disponible");
+                continue;
+            }
+
+            stockByProductId[detail.ProductId] = product.Stock;
+            stockSummary.Add($"{product.Name}: solicitado {detail.Quantity}, disponible {product.Stock}");
+
+            if (product.Stock <= 0)
+            {
+                if (validateForSale)
+                    unavailableProducts.Add($"{product.Name}: sin stock disponible");
+                continue;
+            }
+
+            if (validateForSale && detail.Quantity > product.Stock)
+            {
+                unavailableProducts.Add(
+                    $"{product.Name}: solicitado {detail.Quantity}, disponible {product.Stock}");
+            }
+        }
+
+        if (validateForSale && unavailableProducts.Count > 0)
+            throw new DomainException(
+                "No se puede reconstruir la factura porque no hay stock suficiente.\n\n" +
+                "Productos que impiden la reconstrucción:\n- " +
+                string.Join("\n- ", unavailableProducts) +
+                "\n\nStock actual de todos los productos:\n- " +
+                string.Join("\n- ", stockSummary) +
+                "\n\nNo se duplicó la venta.");
 
         var customer = await _customerRepository.GetByIdAsync(invoice.CustomerId);
 
@@ -342,6 +405,7 @@ public sealed class InvoiceService : IInvoiceService
                 ProductId = detail.ProductId,
                 ProductName = detail.ProductName,
                 Quantity = detail.Quantity,
+                Stock = stockByProductId.GetValueOrDefault(detail.ProductId),
                 UnitPrice = detail.Price,
                 Subtotal = detail.Subtotal
             }).ToList(),

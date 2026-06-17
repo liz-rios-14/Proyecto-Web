@@ -40,7 +40,11 @@ export function sanitizeSingleSpacedText(
 }
 
 export function sanitizeEmail(value, maxLength = 120) {
-  return value.replace(/\s/g, "").toLowerCase().slice(0, maxLength);
+  return value
+    .replace(/\s/g, "")
+    .replace(/[^a-zA-Z0-9@._+-]/g, "")
+    .toLowerCase()
+    .slice(0, maxLength);
 }
 
 export function sanitizeDigits(value, maxLength = 20) {

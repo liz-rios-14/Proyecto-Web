@@ -46,7 +46,7 @@ public class Invoice : BaseEntity
     public void AssignInvoiceNumber(int sequence)
     {
         if (sequence <= 0)
-            throw new DomainException("La secuencia de factura no es válida.");
+            throw new DomainException("La secuencia de factura no es vÃ¡lida.");
 
         InvoiceNumber = $"FAC-{sequence:D10}";
     }
@@ -63,13 +63,13 @@ public class Invoice : BaseEntity
         string sellerRole)
     {
         if (string.IsNullOrWhiteSpace(customerName))
-            throw new DomainException("El nombre del cliente para auditoría es obligatorio.");
+            throw new DomainException("El nombre del cliente para auditorÃ­a es obligatorio.");
 
         if (sellerId <= 0)
-            throw new DomainException("El vendedor para auditoría es obligatorio.");
+            throw new DomainException("El vendedor para auditorÃ­a es obligatorio.");
 
         if (string.IsNullOrWhiteSpace(sellerUserName))
-            throw new DomainException("El usuario vendedor para auditoría es obligatorio.");
+            throw new DomainException("El usuario vendedor para auditorÃ­a es obligatorio.");
 
         CustomerNameSnapshot = customerName.Trim().ToUpperInvariant();
         CustomerCedulaSnapshot = customerCedula?.Trim() ?? string.Empty;
@@ -89,7 +89,11 @@ public class Invoice : BaseEntity
             : sellerRole.Trim().ToUpperInvariant();
     }
 
-    public void AddDetail(Product product, int quantity)
+    public void AddDetail(
+        Product product,
+        int quantity,
+        decimal? unitPrice = null,
+        string? productName = null)
     {
         if (product is null)
             throw new DomainException("El producto es obligatorio.");
@@ -102,8 +106,8 @@ public class Invoice : BaseEntity
 
         var detail = new InvoiceDetail(
             product.Id,
-            product.Name,
-            product.Price,
+            string.IsNullOrWhiteSpace(productName) ? product.Name : productName,
+            unitPrice ?? product.Price,
             quantity
         );
 
@@ -114,7 +118,7 @@ public class Invoice : BaseEntity
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(InvoiceNumber))
-            throw new DomainException("El número de factura es obligatorio.");
+            throw new DomainException("El nÃºmero de factura es obligatorio.");
 
         ValidateCustomer();
         ValidateSellerSnapshot();
@@ -161,13 +165,13 @@ public class Invoice : BaseEntity
     private void ValidateSellerSnapshot()
     {
         if (string.IsNullOrWhiteSpace(CustomerNameSnapshot))
-            throw new DomainException("Los datos históricos del cliente son obligatorios.");
+            throw new DomainException("Los datos histÃ³ricos del cliente son obligatorios.");
 
         if (SellerId <= 0)
-            throw new DomainException("Los datos históricos del vendedor son obligatorios.");
+            throw new DomainException("Los datos histÃ³ricos del vendedor son obligatorios.");
 
         if (string.IsNullOrWhiteSpace(SellerUserNameSnapshot))
-            throw new DomainException("El usuario histórico del vendedor es obligatorio.");
+            throw new DomainException("El usuario histÃ³rico del vendedor es obligatorio.");
     }
 
     private void ValidateDetails()

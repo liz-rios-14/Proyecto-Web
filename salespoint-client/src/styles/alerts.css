@@ -70,6 +70,44 @@
   overflow-wrap: anywhere;
 }
 
+.app-alert-content {
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.app-alert:has(.app-alert-lines) {
+  width: min(620px, calc(100vw - 32px));
+}
+
+.app-alert-lines {
+  display: grid;
+  gap: 7px;
+}
+
+.app-alert-lines p {
+  line-height: 1.45;
+}
+
+.app-alert-lines p:has(+ p),
+.app-alert-lines p:first-child {
+  padding: 0;
+}
+
+.app-alert-lines p:not(:first-child) {
+  padding-left: 10px;
+}
+
+.app-alert-lines p:has(+ .app-alert-spacer),
+.app-alert-lines p:first-child {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.app-alert-spacer {
+  height: 8px;
+}
+
 .app-alert button {
   margin-left: auto;
   padding: 0 6px;

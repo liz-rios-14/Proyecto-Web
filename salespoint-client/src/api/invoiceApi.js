@@ -16,8 +16,13 @@ export const getInvoiceById = async (id) => {
   return response.data;
 };
 
-export const reconstructInvoiceByNumber = async (invoiceNumber) => {
-  const response = await api.get(`/invoices/audit/${invoiceNumber}`);
+export const reconstructInvoiceByNumber = async (
+  invoiceNumber,
+  { validateForSale = false, validateEvenRules = false } = {}
+) => {
+  const response = await api.get(`/invoices/audit/${invoiceNumber}`, {
+    params: { validateForSale, validateEvenRules },
+  });
   return response.data;
 };
 

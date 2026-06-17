@@ -14,7 +14,9 @@ public interface IInvoiceService
     Task<InvoiceDto?> GetByIdAsync(int id);
 
     Task<ReconstructedInvoiceDto?> ReconstructByInvoiceNumberAsync(
-        string invoiceNumber);
+        string invoiceNumber,
+        bool validateForSale = false,
+        bool validateEvenRules = false);
     Task<PagedResponse<AuditInvoiceHistoryDto>> GetAuditHistoryAsync(
         int pageNumber,
         int pageSize);

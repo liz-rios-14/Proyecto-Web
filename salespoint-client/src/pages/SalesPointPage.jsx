@@ -568,7 +568,30 @@ function SalesPointContent() {
     }
 
     const response = await api.get("/products/search", { params });
-    return response.data;
+    const data = response.data;
+    const items = Array.isArray(data) ? data : data.items ?? [];
+    const adjustedItems = items
+      .map((item) => {
+        const reservedQuantity = details
+          .filter((detail) => detail.id === item.id)
+          .reduce((sum, detail) => sum + Number(detail.quantity || 0), 0);
+        const originalStock = Number(item.stock || 0);
+        const availableStock = Math.max(originalStock - reservedQuantity, 0);
+
+        return {
+          ...item,
+          originalStock,
+          stock: availableStock,
+        };
+      })
+      .filter((item) => Number(item.stock) > 0);
+
+    return Array.isArray(data)
+      ? adjustedItems
+      : {
+          ...data,
+          items: adjustedItems,
+        };
   };
 
   const addProductToDetail = () => {
@@ -586,8 +609,10 @@ function SalesPointContent() {
     const existingDetail = details.find((item) => item.id === product.id);
     const currentQuantity = existingDetail ? Number(existingDetail.quantity) : 0;
     const finalQuantity = currentQuantity + requestedQuantity;
+    const availableStock = Number(product.stock);
+    const originalStock = Number(product.originalStock ?? product.stock);
 
-    if (finalQuantity > Number(product.stock)) {
+    if (requestedQuantity > availableStock) {
       showAlert(
         "La cantidad no puede superar el stock disponible.",
         "warning"
@@ -595,7 +620,7 @@ function SalesPointContent() {
       return;
     }
 
-    if (Number(product.stock) === 1) {
+    if (availableStock === 1) {
       showAlert(
         `Atencion: el producto ${product.name} tiene solo 1 unidad en stock.`,
         "warning"
@@ -621,7 +646,7 @@ function SalesPointContent() {
           id: product.id,
           name: product.name,
           price: Number(product.price),
-          stock: Number(product.stock),
+          stock: originalStock,
           quantity: requestedQuantity,
           subtotal: Number((Number(product.price) * requestedQuantity).toFixed(2)),
         },
